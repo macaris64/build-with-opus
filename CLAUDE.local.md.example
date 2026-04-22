@@ -1,0 +1,18 @@
+# Personal Overrides
+
+<!-- Copy this file to CLAUDE.local.md (gitignored) and fill in your personal overrides. -->
+<!-- CLAUDE.local.md is appended to CLAUDE.md every session — it does NOT override, it adds. -->
+
+<!-- Example: local cFS headers installed outside the submodule path -->
+<!-- - My cFS headers are at /opt/cfs/cfe/fsw/inc rather than the default submodule location -->
+
+<!-- Example: local ROS 2 domain to avoid collision with lab hardware -->
+<!-- - My ROS_DOMAIN_ID is 5 (lab hardware uses domain 0) -->
+
+<!-- Example: local Gazebo model path -->
+<!-- - GZ_SIM_RESOURCE_PATH=/home/me/gz_models:/usr/share/gz/gz-sim8/models -->
+
+<!-- Example: local cross-compiler for embedded target -->
+<!-- - Cross-compiler toolchain: /opt/gcc-arm-none-eabi/bin/arm-none-eabi-gcc -->
+
+<!-- Add your own machine-specific or workflow-specific notes below. -->

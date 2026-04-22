@@ -1,0 +1,66 @@
+# ─── Claude Code ─────────────────────────────────────────────────────────────
+# Personal overrides — never commit
+CLAUDE.local.md
+.claude/settings.local.json
+.claude/agent-memory-local/
+.claude/plans/
+
+# ─── Rust ─────────────────────────────────────────────────────────────────────
+# Cargo.lock is committed in this workspace (it has binary members).
+# For library-only crates, Cargo.lock is conventionally gitignored.
+target/
+.cargo/registry/
+.cargo/git/
+
+# ─── C / CMake ────────────────────────────────────────────────────────────────
+build/
+*.o
+*.a
+*.d
+compile_commands.json
+CMakeCache.txt
+CMakeFiles/
+
+# ─── ROS 2 / colcon ───────────────────────────────────────────────────────────
+ros2_ws/install/
+ros2_ws/build/
+ros2_ws/log/
+log/
+
+# ─── Secrets & environment ────────────────────────────────────────────────────
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+!*.key.example
+
+# ─── Python ───────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+dist/
+*.so
+
+# ─── macOS ────────────────────────────────────────────────────────────────────
+.DS_Store
+.AppleDouble
+.LSOverride
+
+# ─── Editors ──────────────────────────────────────────────────────────────────
+.idea/
+.vscode/settings.json
+.vscode/launch.json
+*.swp
+*.swo
+*~
+
+# ─── OS ───────────────────────────────────────────────────────────────────────
+Thumbs.db
+ehthumbs.db
+
+# ─── Logs ─────────────────────────────────────────────────────────────────────
+*.log
+logs/

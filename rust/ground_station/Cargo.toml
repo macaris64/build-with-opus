@@ -1,0 +1,13 @@
+[package]
+name    = "ground_station"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "ground_station"
+path = "src/main.rs"
+
+[dependencies]
+anyhow     = { workspace = true }
+log        = { workspace = true }
+env_logger = { workspace = true }

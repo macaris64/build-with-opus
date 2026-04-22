@@ -1,0 +1,14 @@
+# Files copied (not symlinked) into each git worktree.
+# List gitignored files that each worktree needs its own copy of.
+# Syntax is the same as .gitignore.
+
+# Local environment config
+.env
+.env.local
+
+# Personal Claude Code overrides
+CLAUDE.local.md
+.claude/settings.local.json
+
+# CMake build — each worktree gets an independent out-of-tree build directory
+build/

@@ -1,0 +1,6 @@
+teleop_node:
+  ros__parameters:
+    # Maximum linear velocity (m/s) — hardware limit for this rover chassis
+    max_linear_vel: 1.0
+    # Maximum angular velocity (rad/s)
+    max_angular_vel: 0.5

@@ -1,0 +1,15 @@
+[package]
+name    = "cfs_bindings"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+name = "cfs_bindings"
+path = "src/lib.rs"
+
+[build-dependencies]
+# bindgen generates Rust FFI bindings from _defs/mission_config.h at build time
+bindgen = "0.69"
+
+[dependencies]
+log = { workspace = true }

@@ -1,0 +1,88 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+
+  "model": "claude-sonnet-4-6",
+
+  "permissions": {
+    "allow": [
+      "Bash(cargo *)",
+      "Bash(cmake *)",
+      "Bash(ctest *)",
+      "Bash(colcon *)",
+      "Bash(cppcheck *)",
+      "Bash(rustfmt *)",
+      "Bash(clang-format *)",
+      "Bash(git status)",
+      "Bash(git diff *)",
+      "Bash(git log *)",
+      "Bash(git add *)",
+      "Bash(git commit *)",
+      "Bash(git checkout *)",
+      "Bash(git branch *)",
+      "Bash(git stash *)",
+      "Bash(gh pr *)",
+      "Bash(gh issue *)",
+      "Bash(gh repo *)",
+      "Read(**)"
+    ],
+    "ask": [
+      "Bash(git push *)"
+    ],
+    "deny": [
+      "Bash(rm -rf *)",
+      "Read(.env)",
+      "Edit(.env)",
+      "Write(.env)"
+    ]
+  },
+
+  "env": {
+    "RUST_LOG": "debug",
+    "ROS_DOMAIN_ID": "0"
+  },
+
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/format-on-save.sh",
+            "statusMessage": "Formatting...",
+            "timeout": 30
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Write|Edit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/protect-secrets.sh",
+            "statusMessage": "Checking for secret files...",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "\"$CLAUDE_PROJECT_DIR\"/.claude/hooks/notify-done.sh",
+            "async": true
+          }
+        ]
+      }
+    ]
+  },
+
+  "statusLine": {
+    "type": "command",
+    "command": "echo \"$(git branch --show-current 2>/dev/null) | $(date +%H:%M)\""
+  }
+}

@@ -1,0 +1,11 @@
+[workspace]
+members = [
+    "rust/ground_station",
+    "rust/cfs_bindings",
+]
+resolver = "2"
+
+[workspace.dependencies]
+anyhow  = "1"
+log     = "0.4"
+env_logger = "0.11"
