@@ -34,9 +34,22 @@ pub enum CcsdsError {
         got: usize,
     },
 
-    /// CCSDS primary-header version field (3-bit) was not `0b000`.
-    /// SAKURA-II only supports Space Packet Protocol v1; any other value
-    /// here indicates a malformed or non-CCSDS frame.
+    /// CCSDS primary-header version field (3-bit) was not `0b000`, **or**
+    /// the secondary-header flag (1-bit) was not `1`. Phase 07 folds both
+    /// checks into this single variant because the version field and the
+    /// sec-hdr flag are jointly spec-locked by SAKURA-II (arch §2.4:
+    /// "SAKURA-II never omits the time tag") and the `CcsdsError` enum is
+    /// frozen at the nine variants enumerated in arch §2.8.
+    ///
+    /// The payload is the 4-bit `top_nibble_without_type` =
+    /// `[ver2, ver1, ver0, sec_hdr]` so an operator can distinguish:
+    ///
+    /// | Value | Meaning |
+    /// |---|---|
+    /// | `0b0000` | Version `000` but sec-hdr flag missing |
+    /// | `0b0001` | Conformant (not observed on the error path) |
+    /// | `0b0010`, `0b0100`, `0b0110`, `0b1000`, …, `0b1110` | Non-zero version, sec-hdr missing |
+    /// | `0b0011`, `0b0101`, …, `0b1111` | Non-zero version with sec-hdr present |
     #[error("invalid CCSDS version: {0}")]
     InvalidVersion(u8),
 
