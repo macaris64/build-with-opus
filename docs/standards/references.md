@@ -92,6 +92,8 @@ Cited for pedigree and cross-reference; SAKURA-II does not formally comply with 
 |---|---|---|
 | MISRA C:2012 | Guidelines for Use of C in Critical Systems | Cited via [`../../.claude/rules/general.md`](../../.claude/rules/general.md); not re-stated |
 | DO-178C / ED-12C | Software Considerations in Airborne Systems and Equipment Certification | Referenced for pedigree only (not applied in full); cited by `_defs/mission_config.h` comment |
+| IEEE 802.3 | Ethernet — CRC-32 polynomial (used as CFDP Class 1 checksum per Q-C2) | `architecture/06-ground-segment-rust.md`, `architecture/07-comms-stack.md`, ICDs, `standards/decisions-log.md` |
+| IEEE 1012 | IEEE Standard for System, Software, and Hardware Verification and Validation | `mission/verification/V&V-Plan.md`, `mission/verification/compliance-matrix.md`, `standards/deviations.md` |
 
 ## 5. Implementation References (non-standards)
 
