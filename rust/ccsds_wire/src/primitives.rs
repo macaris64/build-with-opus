@@ -7,32 +7,21 @@
 //! that path narrow is what makes every endianness-conversion site
 //! grep-visible per Q-C8 (`docs/standards/decisions-log.md`).
 //!
+//! Invariant violations surface through the unified [`crate::CcsdsError`]
+//! folded in by Phase 05 (arch §2.8). `PacketDataLength` is the one
+//! infallible constructor — its only invariant (buffer length vs declared
+//! length) is a decode-time concern and surfaces as
+//! `CcsdsError::LengthMismatch` in Phase 07.
+//!
 //! Definition sites:
 //! - `docs/architecture/06-ground-segment-rust.md §2.2` — per-field invariants
-//! - `docs/architecture/07-comms-stack.md §2` — primary-header layout (`SeqCount` 14-bit, `PacketDataLength` raw)
+//! - `docs/architecture/06-ground-segment-rust.md §2.8` — error enum
+//! - `docs/architecture/07-comms-stack.md §2` — primary-header layout
 //! - `SYS-REQ-0026` — instance multiplicity via `InstanceId`, not by burning extra APIDs
-//!
-//! The three placeholder error enums in this module (`SequenceCountError`,
-//! `FuncCodeError`, `InstanceIdError`) are folded into the unified
-//! `crate::CcsdsError` by Phase 05 (arch §2.8). `PacketDataLength` has no
-//! placeholder — its constructor is infallible because the only invariant
-//! (buffer length vs declared length) is a decode-time concern and
-//! surfaces as `CcsdsError::LengthMismatch` in Phase 07.
+
+use crate::CcsdsError;
 
 // --- SequenceCount ----------------------------------------------------------
-
-/// `SequenceCount` construction error.
-///
-/// Temporary module-local enum per the Phase 04 Phase Card: carries only
-/// `#[derive(Debug)]` (plus `PartialEq`/`Eq` so tests can `assert_eq!`).
-/// Phase 05 folds this variant into `crate::CcsdsError`; see decisions-log
-/// ticket for the §2.8 enum gap flagged from Phase 04.
-#[derive(Debug, PartialEq, Eq)]
-pub enum SequenceCountError {
-    /// Raw value exceeded the 14-bit sequence-count ceiling (`> 0x3FFF`).
-    /// The raw input is preserved so callers can log or surface it.
-    SequenceCountOutOfRange(u16),
-}
 
 /// 14-bit CCSDS primary-header sequence count (`0x0000..=0x3FFF`).
 ///
@@ -54,11 +43,11 @@ impl SequenceCount {
     ///
     /// # Errors
     ///
-    /// Returns [`SequenceCountError::SequenceCountOutOfRange`] if
-    /// `v > 0x3FFF`. The error carries `v` unchanged.
-    pub const fn new(v: u16) -> Result<Self, SequenceCountError> {
+    /// Returns [`CcsdsError::SequenceCountOutOfRange`] if `v > 0x3FFF`.
+    /// The error carries `v` unchanged.
+    pub const fn new(v: u16) -> Result<Self, CcsdsError> {
         if v > Self::MAX {
-            Err(SequenceCountError::SequenceCountOutOfRange(v))
+            Err(CcsdsError::SequenceCountOutOfRange(v))
         } else {
             Ok(SequenceCount(v))
         }
@@ -108,17 +97,6 @@ impl PacketDataLength {
 
 // --- FuncCode ---------------------------------------------------------------
 
-/// `FuncCode` construction error.
-///
-/// Temporary module-local enum per the Phase 04 Phase Card. Phase 05 folds
-/// this variant into `crate::CcsdsError::FuncCodeReserved` (arch §2.8).
-#[derive(Debug, PartialEq, Eq)]
-pub enum FuncCodeError {
-    /// Raw value was `0x0000`, which is reserved by arch §2.2 and must
-    /// not be used as a live function code.
-    FuncCodeReserved,
-}
-
 /// CCSDS secondary-header function code (nonzero `u16`).
 ///
 /// Sealed newtype. The inner `u16` is private; `0x0000` is reserved and
@@ -136,10 +114,10 @@ impl FuncCode {
     ///
     /// # Errors
     ///
-    /// Returns [`FuncCodeError::FuncCodeReserved`] if `v == 0x0000`.
-    pub const fn new(v: u16) -> Result<Self, FuncCodeError> {
+    /// Returns [`CcsdsError::FuncCodeReserved`] if `v == 0x0000`.
+    pub const fn new(v: u16) -> Result<Self, CcsdsError> {
         if v == 0 {
-            Err(FuncCodeError::FuncCodeReserved)
+            Err(CcsdsError::FuncCodeReserved)
         } else {
             Ok(FuncCode(v))
         }
@@ -154,17 +132,6 @@ impl FuncCode {
 }
 
 // --- InstanceId -------------------------------------------------------------
-
-/// `InstanceId` construction error.
-///
-/// Temporary module-local enum per the Phase 04 Phase Card. Phase 05 folds
-/// this variant into `crate::CcsdsError::InstanceIdReserved` (arch §2.8).
-#[derive(Debug, PartialEq, Eq)]
-pub enum InstanceIdError {
-    /// Raw value was `0`, which is reserved by arch §2.2 as the broadcast
-    /// sentinel and must not be used as a unit-addressed instance id.
-    InstanceIdReserved,
-}
 
 /// CCSDS secondary-header instance id (`1..=255`).
 ///
@@ -184,10 +151,10 @@ impl InstanceId {
     ///
     /// # Errors
     ///
-    /// Returns [`InstanceIdError::InstanceIdReserved`] if `v == 0`.
-    pub const fn new(v: u8) -> Result<Self, InstanceIdError> {
+    /// Returns [`CcsdsError::InstanceIdReserved`] if `v == 0`.
+    pub const fn new(v: u8) -> Result<Self, CcsdsError> {
         if v == 0 {
-            Err(InstanceIdError::InstanceIdReserved)
+            Err(CcsdsError::InstanceIdReserved)
         } else {
             Ok(InstanceId(v))
         }
@@ -216,18 +183,13 @@ mod tests {
     // Given: a sequence-count value one past the 14-bit ceiling.
     // When:  constructed through the sealed boundary.
     // Then:  construction fails with
-    //        `SequenceCountError::SequenceCountOutOfRange(v)` carrying the
-    //        offending raw value (arch §2.2; Phase 05 will re-surface this
-    //        as `CcsdsError::SequenceCountOutOfRange(u16)` pending the
-    //        §2.8 enum gap flagged in `docs/standards/decisions-log.md`).
+    //        `CcsdsError::SequenceCountOutOfRange(v)` carrying the
+    //        offending raw value (arch §2.2 / §2.8; Q-C10 option (a)).
     #[test]
     fn test_sequence_count_new_returns_err_when_exceeds_14_bit_range() {
         let raw: u16 = 0x4000;
         let result = SequenceCount::new(raw);
-        assert_eq!(
-            result,
-            Err(SequenceCountError::SequenceCountOutOfRange(0x4000))
-        );
+        assert_eq!(result, Err(CcsdsError::SequenceCountOutOfRange(0x4000)));
     }
 
     // --- Happy path: lower boundary (first packet after boot) --------------
@@ -255,10 +217,7 @@ mod tests {
     #[test]
     fn test_sequence_count_new_returns_err_when_u16_max() {
         let result = SequenceCount::new(u16::MAX);
-        assert_eq!(
-            result,
-            Err(SequenceCountError::SequenceCountOutOfRange(u16::MAX))
-        );
+        assert_eq!(result, Err(CcsdsError::SequenceCountOutOfRange(u16::MAX)));
     }
 
     // --- Constant matches the documented invariant -------------------------
@@ -303,11 +262,11 @@ mod tests {
     // --- Error path: reserved 0x0000 rejected ------------------------------
     // Given: function code 0x0000 (reserved by arch §2.2).
     // When:  constructed through the sealed boundary.
-    // Then:  rejected with `FuncCodeError::FuncCodeReserved`.
+    // Then:  rejected with `CcsdsError::FuncCodeReserved`.
     #[test]
     fn test_func_code_new_returns_err_when_zero() {
         let result = FuncCode::new(0);
-        assert_eq!(result, Err(FuncCodeError::FuncCodeReserved));
+        assert_eq!(result, Err(CcsdsError::FuncCodeReserved));
     }
 
     // --- Happy path: lower boundary (0x0001 is the smallest valid) ---------
@@ -332,12 +291,10 @@ mod tests {
     }
 
     // --- Error variant identity --------------------------------------------
-    // Locks the variant name so a Phase 05 rename (to
-    // `CcsdsError::FuncCodeReserved`) shows up as a single-site diff.
     #[test]
     fn test_func_code_error_variant_equals_reserved() {
         let err = FuncCode::new(0).unwrap_err();
-        assert_eq!(err, FuncCodeError::FuncCodeReserved);
+        assert_eq!(err, CcsdsError::FuncCodeReserved);
     }
 
     // === InstanceId ========================================================
@@ -345,11 +302,11 @@ mod tests {
     // --- Error path: reserved 0 rejected -----------------------------------
     // Given: instance id 0 (broadcast sentinel per arch §2.2).
     // When:  constructed through the sealed boundary.
-    // Then:  rejected with `InstanceIdError::InstanceIdReserved`.
+    // Then:  rejected with `CcsdsError::InstanceIdReserved`.
     #[test]
     fn test_instance_id_new_returns_err_when_zero() {
         let result = InstanceId::new(0);
-        assert_eq!(result, Err(InstanceIdError::InstanceIdReserved));
+        assert_eq!(result, Err(CcsdsError::InstanceIdReserved));
     }
 
     // --- Happy path: lower boundary (MIN = 1) ------------------------------
@@ -376,11 +333,9 @@ mod tests {
     }
 
     // --- Error variant identity --------------------------------------------
-    // Locks the variant name so a Phase 05 rename (to
-    // `CcsdsError::InstanceIdReserved`) shows up as a single-site diff.
     #[test]
     fn test_instance_id_error_variant_equals_reserved() {
         let err = InstanceId::new(0).unwrap_err();
-        assert_eq!(err, InstanceIdError::InstanceIdReserved);
+        assert_eq!(err, CcsdsError::InstanceIdReserved);
     }
 }

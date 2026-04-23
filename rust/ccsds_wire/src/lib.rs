@@ -1,7 +1,10 @@
 //! `ccsds_wire` — Q-C8 locus A. The only pure-Rust CCSDS BE pack/unpack
 //! crate in the workspace. Populated by Phases 02–09 per
 //! `docs/architecture/06-ground-segment-rust.md §1.1, §2`. Phase 03 lands
-//! the first public item: the sealed [`Apid`] newtype (arch §2.2).
+//! the first public item: the sealed [`Apid`] newtype (arch §2.2). Phase 04
+//! extends the sealed-newtype pattern to `SequenceCount`, `PacketDataLength`,
+//! `FuncCode`, `InstanceId`. Phase 05 adds the unified [`CcsdsError`] enum
+//! (arch §2.8) and the [`PacketType`] discriminant (arch §2.4).
 
 // `forbid(unsafe_code)` escalates above the workspace `deny(unsafe_code)`
 // so no child scope can re-enable unsafe via `#[allow]` — this is the BE
@@ -16,10 +19,11 @@
 #![warn(rust_2018_idioms)]
 
 pub mod apid;
+pub mod error;
+pub mod packet_type;
 pub mod primitives;
 
-pub use apid::{Apid, ApidError};
-pub use primitives::{
-    FuncCode, FuncCodeError, InstanceId, InstanceIdError, PacketDataLength, SequenceCount,
-    SequenceCountError,
-};
+pub use apid::Apid;
+pub use error::CcsdsError;
+pub use packet_type::PacketType;
+pub use primitives::{FuncCode, InstanceId, PacketDataLength, SequenceCount};
