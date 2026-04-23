@@ -49,6 +49,7 @@ impl PacketType {
 }
 
 #[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::panic, clippy::expect_used)] // test-only conveniences: workspace denies these for production code
 mod tests {
     use super::*;
 
