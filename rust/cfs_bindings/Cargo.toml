@@ -12,7 +12,8 @@ path = "src/lib.rs"
 bindgen = "0.69"
 
 [dependencies]
-log = { workspace = true }
+log        = { workspace = true }
+ccsds_wire = { path = "../ccsds_wire" }
 
 [lints]
 workspace = true

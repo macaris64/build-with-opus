@@ -14,6 +14,9 @@
 //! The raw bindgen output is included below; safe wrapper types are defined
 //! in this module to give callers a Rust-idiomatic interface.
 
+pub mod message;
+pub use message::{Message, MsgId, SbBuffer};
+
 include!(concat!(env!("OUT_DIR"), "/mission_config_bindings.rs"));
 
 /// Mission configuration constants re-exported with idiomatic Rust names.

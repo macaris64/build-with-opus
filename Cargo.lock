@@ -145,6 +145,7 @@ name = "cfs_bindings"
 version = "0.1.0"
 dependencies = [
  "bindgen",
+ "ccsds_wire",
  "log",
 ]
 

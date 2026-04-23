@@ -165,7 +165,7 @@ A milestone phase is `[ TEST ]`-badged (§4.2) and produces a **hard deliverable
 | `[✅]` 09 | 🟢 FEAT | `SpacePacket<'a>` + `PacketBuilder` | `feat/phase-09-space-packet` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[x]` 10 | 🧪 TEST | **MILESTONE 1/5 — `ccsds_wire v1.0`** | `feat/phase-10-ccsds-wire-milestone` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[✅]` 11 | 🔵 ARCH | Rename SAMPLE_MISSION → SAKURA_II + SCID hook | `feat/phase-11-mission-rename` | `claude-opus-4-7` | L | 100 % ✅ |
-| `[ ]` 12 | 🟢 FEAT | `cfs_bindings` safe wrappers (CFE_MSG / CFE_SB) | `feat/phase-12-cfs-msg-wrappers` | `claude-sonnet-4-6` | M | 100 % ✅ |
+| `[✅]` 12 | 🟢 FEAT | `cfs_bindings` safe wrappers (CFE_MSG / CFE_SB) | `feat/phase-12-cfs-msg-wrappers` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[ ]` 13 | 🟢 FEAT | `_defs/mids.h` + `cfs_bindings::mids` | `feat/phase-13-mid-macros` | `claude-sonnet-4-6` | L | 100 % ✅ |
 | `[ ]` 14 | 🟢 FEAT | FFI host ↔ `ccsds_wire` conversion helpers | `feat/phase-14-ffi-conversion` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[ ]` 15 | 🔴 CRIT | Migrate `ground_station::telemetry` → `ccsds_wire` | `feat/phase-15-telemetry-migration` | `claude-opus-4-7` | M | 100 % ✅ |
