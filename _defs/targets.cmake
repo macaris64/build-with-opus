@@ -3,7 +3,7 @@
 # Defines the canonical mission name, spacecraft ID, and the list of cFS
 # applications enabled for this build. Included by the top-level CMakeLists.txt.
 
-set(MISSION_NAME "SAMPLE_MISSION")
+set(MISSION_NAME "SAKURA_II")
 set(SPACECRAFT_ID 42)
 
 # List of cFS apps included in this mission build.

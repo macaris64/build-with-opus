@@ -50,7 +50,7 @@ Specific files that carry the codename:
 Edit [`../../_defs/mission_config.h`](../../_defs/mission_config.h):
 
 - Pick a new `SPACECRAFT_ID` (11-bit value `0x001`–`0x7FE`; `0x7FF` is the CCSDS idle APID and reserved).
-- Keep `SAMPLE_MISSION_MAX_PIPES` and `SAMPLE_MISSION_TASK_STACK` unless you have a specific reason to change them.
+- Keep `SAKURA_II_MAX_PIPES` and `SAKURA_II_TASK_STACK` unless you have a specific reason to change them. (If you fork for a different mission, rename these macros alongside `MISSION_NAME` — a single fleet-prefix per repo keeps the `scripts/grep-lints.sh` regression guard meaningful.)
 
 Edit [`../../_defs/targets.cmake`](../../_defs/targets.cmake):
 

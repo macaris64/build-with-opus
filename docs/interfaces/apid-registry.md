@@ -18,8 +18,8 @@ CCSDS primary-header fields relevant to SAKURA-II:
 | Packet Sequence Count | 14 | per-APID rolling counter | FSW runtime |
 
 **Spacecraft ID (SCID)** — 10-bit field in the TM Transfer Frame (CCSDS 132.0-B) and in CCSDS secondary headers.
-Authoritative value: `SPACECRAFT_ID = 42U` — see [`_defs/mission_config.h`](../../_defs/mission_config.h) line 10.
-When `MISSION_NAME` is renamed from `SAMPLE_MISSION` to `SAKURA_II`, SCID may be re-allocated per mission fleet policy; any change MUST be reflected here before the build flips.
+Authoritative value: `SPACECRAFT_ID = 42U` — see [`_defs/mission_config.h`](../../_defs/mission_config.h).
+`MISSION_NAME = "SAKURA_II"` was adopted in Phase 11 (see `_defs/targets.cmake` and `_defs/mission_config.h`). Fleet SCID allocation anchors on `SAKURA_II_SCID_BASE = 42U`; per-instance SCIDs are derived by offset from the anchor and are not allocated via additional entries in this registry. Any change to the anchor MUST be reflected here before the build flips.
 
 ## APID Allocation
 

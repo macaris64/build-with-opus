@@ -137,7 +137,7 @@ Per Q-H1, the HPSC target uses **SMP Linux with cFS running as tasks within a si
 Implications for scaling:
 
 - **One cFS container image per orbiter instance.** Scale-5 runs 5 instances of the same image, each reading a different `orbiter-N` entry from `_defs/mission.yaml`.
-- **Compile-time constants are fleet-shared.** [`../../_defs/mission_config.h`](../../_defs/mission_config.h) defines the mission-wide `SAMPLE_MISSION_MAX_PIPES`, `SAMPLE_MISSION_TASK_STACK`, `SPACECRAFT_ID`. An instance does not get its own header.
+- **Compile-time constants are fleet-shared.** [`../../_defs/mission_config.h`](../../_defs/mission_config.h) defines the mission-wide `SAKURA_II_MAX_PIPES`, `SAKURA_II_TASK_STACK`, `SAKURA_II_SCID_BASE`, `SPACECRAFT_ID`, and `MISSION_NAME`. An instance does not get its own header; per-instance SCIDs derive from `SAKURA_II_SCID_BASE` by offset.
 - **Per-instance parameters go through YAML**, not through per-instance headers. Fighting this creates a combinatorial header explosion that Phase A explicitly sought to prevent.
 
 A forthcoming `_defs/apids.h` (Batch B3, authored alongside `01-orbiter-cfs.md`) will expose the APID/MID macros consumed by app code. That header is fleet-shared; per-instance disambiguation is runtime (via CFE Instance ID from YAML), not compile-time.
