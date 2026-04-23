@@ -19,11 +19,13 @@
 #![warn(rust_2018_idioms)]
 
 pub mod apid;
+pub mod cuc;
 pub mod error;
 pub mod packet_type;
 pub mod primitives;
 
 pub use apid::Apid;
+pub use cuc::{Cuc, P_FIELD};
 pub use error::CcsdsError;
 pub use packet_type::PacketType;
 pub use primitives::{FuncCode, InstanceId, PacketDataLength, SequenceCount};
