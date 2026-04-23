@@ -160,7 +160,7 @@ A milestone phase is `[ TEST ]`-badged (§4.2) and produces a **hard deliverable
 | `[✅]` 04 | 🔴 CRIT | Sequence / length / funccode / instance newtypes | `feat/phase-04-sized-newtypes` | `claude-opus-4-7` | M | 100 % ✅ |
 | `[✅]` 05 | 🔴 CRIT | `PacketType` + `CcsdsError` enums | `feat/phase-05-error-enum` | `claude-opus-4-7` | L | 100 % ✅ |
 | `[✅]` 06 | 🔴 CRIT | `Cuc` struct + BE codec + P-Field 0x2F | `feat/phase-06-cuc-codec` | `claude-opus-4-7` | H | 100 % ✅ |
-| `[ ]` 07 | 🔴 CRIT | `PrimaryHeader` encode / decode | `feat/phase-07-primary-header` | `claude-opus-4-7` | H | 100 % ✅ |
+| `[✅]` 07 | 🔴 CRIT | `PrimaryHeader` encode / decode | `feat/phase-07-primary-header` | `claude-opus-4-7` | H | 100 % ✅ |
 | `[ ]` 08 | 🔴 CRIT | `SecondaryHeader` + `time_suspect` | `feat/phase-08-secondary-header` | `claude-opus-4-7` | H | 100 % ✅ |
 | `[ ]` 09 | 🟢 FEAT | `SpacePacket<'a>` + `PacketBuilder` | `feat/phase-09-space-packet` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[ ]` 10 | 🧪 TEST | **MILESTONE 1/5 — `ccsds_wire v1.0`** | `feat/phase-10-ccsds-wire-milestone` | `claude-sonnet-4-6` | H | 100 % ✅ |
