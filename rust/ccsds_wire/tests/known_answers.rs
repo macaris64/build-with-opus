@@ -198,6 +198,12 @@ fn kat_pkt_tm_0110_0002() {
 
 /// Hand-rolled wire bytes for PKT-TM-0400-0004 (packet-catalog.md §4.2).
 ///
+/// NOTE: The catalog defines this packet ID as the cryobot BW-collapse variant
+/// using a reduced 4-byte secondary header (§1.4). `ccsds_wire` v1.0 only
+/// implements the standard 10-byte secondary header; the reduced variant is
+/// deferred to the cryobot tether crate. This KAT exercises the standard
+/// layout with the correct APID (0x400) and func_code (0x0004).
+///
 /// Primary  : TM, APID=0x400, seq=0x0000, data_length=17.
 /// Secondary: CUC coarse=100 (0x64), fine=0, func_code=0x0004,
 ///            instance_id=0x01.

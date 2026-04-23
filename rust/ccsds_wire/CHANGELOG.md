@@ -14,6 +14,12 @@
 - CI grep-lint script at `scripts/grep-lints.sh` (Q-C8 LE guard,
   no-unwrap in production code, no-unsafe in ccsds_wire).
 
+### Fixed
+- Pre-existing `uninlined_format_args` in `src/builder.rs` test module.
+- Pre-existing `indexing_slicing` warnings in `src/packet.rs` test module.
+- Pre-existing `assertions_on_constants` in `rust/cfs_bindings/src/lib.rs`
+  (replaced with `const { assert!(...) }` idiomatic form).
+
 ### Summary
 
 MILESTONE 1/5: `ccsds_wire v1.0` — complete test coverage for the
