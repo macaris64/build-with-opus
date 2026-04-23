@@ -1,0 +1,20 @@
+# Phase 01 Red-test fixture. Nested workspace — deliberately NOT a member
+# of the root workspace (see /Cargo.toml `[workspace.members]`). Its sole
+# purpose is to verify that the Phase 01 lint block denies `unsafe_code`
+# and that the `.cargo/config.toml` rustflags turn `unused_imports` into
+# a build error.
+#
+# Current state: NO `[lints]` block yet. Phase 01 Green commit pastes the
+# block from `docs/architecture/06-ground-segment-rust.md §1.2` so the
+# `unsafe {}` and dead import in `src/lib.rs` cause the build to fail —
+# proving the workspace lint policy actually fires.
+#
+# If you ever change the root workspace lint block, update this file too.
+
+[package]
+name = "_lint_probe"
+version = "0.0.0"
+edition = "2021"
+publish = false
+
+[workspace]
