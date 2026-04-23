@@ -21,6 +21,7 @@
 - All `unsafe` blocks require a `// SAFETY:` comment explaining the invariant being upheld
 - Never use `unwrap()` on `Result` or `Option` outside of `#[cfg(test)]` — use `?` or explicit match
 - `#![deny(clippy::all)]` at every crate root; suppression requires a justification comment
+- Radiation-sensitive state on the Rust side (CFDP transaction-id counters, `ApidRouter` filter table, future `tai_ns` mirror) must be held in a `Vault<T>` wrapper — see `docs/architecture/09-failure-and-radiation.md §5.2` and `[Q-F3](../../docs/standards/decisions-log.md)`
 
 ## All Languages
 - Prefer early returns over deep nesting; max 3 levels of indentation

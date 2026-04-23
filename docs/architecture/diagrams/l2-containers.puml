@@ -1,0 +1,65 @@
+@startuml l2-containers
+' SAKURA-II Level 2 (Container) diagram.
+' Authoritative source for the box set and relationships: docs/architecture/00-system-of-systems.md §2–§3.
+' This source is the "higher-fidelity" render referenced by 00-system-of-systems.md line 116;
+' the Mermaid block in that doc is the in-Markdown equivalent.
+
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+
+LAYOUT_WITH_LEGEND()
+
+title SAKURA-II — Level 2: Containers
+
+Person(op, "Mission Operator", "Uplinks TCs; reviews TM, CFDP files, and alerts")
+
+System_Boundary(ground, "Ground Segment (Rust, Docker)") {
+    Container(gs, "ground_station", "Rust binary", "TM ingest / TC uplink / CFDP Class 1")
+    Container(bindings, "cfs_bindings", "Rust library", "FFI decoders linked by ground_station")
+}
+
+System_Boundary(space, "Space Segment") {
+    Container(orb, "Orbiter-01", "cFS / cFE on Linux (HPSC target deferred)", "SCH, TO, CI, ES, SB, TBL, EVS, TIME, OSAL, PSP")
+    ContainerDb(relay, "Relay-01", "FreeRTOS end-to-end", "Smallsat relay; AOS cross-link + Proximity-1")
+
+    System_Boundary(mcus, "Subsystem MCUs (FreeRTOS)") {
+        Container(mcu_payload, "mcu_payload", "FreeRTOS / SpaceWire", "Payload controller")
+        Container(mcu_rwa, "mcu_rwa", "FreeRTOS / CAN", "Reaction wheel assembly controller")
+        Container(mcu_eps, "mcu_eps", "FreeRTOS / UART", "Electrical power system controller")
+    }
+}
+
+System_Boundary(surface, "Surface Segment (Space ROS 2)") {
+    Container(rover_land, "rover_land", "Space ROS 2 / LifecycleNodes", "Surface rover")
+    Container(rover_uav, "rover_uav", "Space ROS 2 / LifecycleNodes", "Atmospheric UAV rover")
+    Container(rover_cryo, "rover_cryobot", "Space ROS 2 / LifecycleNodes", "Subsurface cryobot on tether")
+}
+
+System_Boundary(sim, "Simulation Segment") {
+    Container(gz, "Gazebo Harmonic", "C++ ModelPlugins", "Physics + sensor stimulus")
+    Container(clk, "Clock & Link Model", "Sim shim", "Light-time / packet-drop / clock-skew")
+}
+
+' Relationships — one per boundary in 00-system-of-systems.md §3 protocol-layering table.
+
+Rel(op, gs, "UI interactions")
+Rel(gs, bindings, "Uses (in-process FFI)")
+
+Rel_D(gs, orb, "AOS / TM SDLP / TC SDLP", "CCSDS 732.0-B / 132.0-B / 232.0-B")
+Rel_D(gs, orb, "CFDP Class 1 PDUs", "CCSDS 727.0-B")
+
+Rel(orb, relay, "AOS cross-link", "CCSDS 732.0-B cross-link profile")
+Rel(relay, rover_land, "Proximity-1", "CCSDS 211.0-B")
+Rel(relay, rover_uav, "Proximity-1", "CCSDS 211.0-B")
+Rel(rover_land, rover_cryo, "Tethered optical", "Project-local framing, SPP reduced secondary header")
+
+Rel(orb, mcu_payload, "SPP-in-frame", "SpaceWire, simulated")
+Rel(orb, mcu_rwa, "SPP-in-frame", "CAN, simulated")
+Rel(orb, mcu_eps, "SPP-in-frame", "UART, simulated")
+
+Rel(gz, orb, "Sensor packets", "Sim-injection APIDs 0x500-0x57F")
+Rel(gz, rover_land, "Sensor packets")
+Rel(gz, rover_uav, "Sensor packets")
+Rel(gz, rover_cryo, "Sensor packets")
+Rel(clk, gz, "Timestamp + delay", "Light-time / drop / skew")
+
+@enduml

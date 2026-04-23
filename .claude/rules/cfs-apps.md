@@ -15,3 +15,4 @@ paths:
 - Runtime-configurable data belongs in `CFE_TBL`-managed tables, not in compile-time static arrays
 - Software bus pipe depth must be a named constant; never pass a literal integer to `CFE_SB_CreatePipe`
 - Return error codes consistently: all initialization functions return `int32_t`; `CFE_SUCCESS` on success, a cFE status code on failure
+- Radiation-sensitive static state (cFE TIME internals, mode register, `health` counters) must carry `__attribute__((section(".critical_mem")))` with a MISRA Rule 8.11 deviation comment; see `docs/architecture/09-failure-and-radiation.md §5.1` for the placement rules and `[Q-F3](../../docs/standards/decisions-log.md)` for the authoritative answer

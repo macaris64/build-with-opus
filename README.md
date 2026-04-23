@@ -29,3 +29,13 @@ cd ros2_ws && colcon build --symlink-install && colcon test
 ```
 
 Copy `.env.example` to `.env` before using the Postgres MCP server.
+
+## Using This as a Boilerplate
+
+Forking to start a new mission? See [docs/dev/fork-bootstrap.md](docs/dev/fork-bootstrap.md) for the runbook (rename codename, reset mission config, trim rules/skills, re-run quickstart).
+
+## Documentation
+
+- [docs/README.md](docs/README.md) — full documentation index by audience.
+- [docs/dev/quickstart.md](docs/dev/quickstart.md) — 10-minute bring-up from a fresh clone.
+- [docs/dev/mcp-setup.md](docs/dev/mcp-setup.md) — how to approve and configure the GitHub / Sentry / Postgres MCP servers.
