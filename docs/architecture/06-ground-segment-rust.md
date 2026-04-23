@@ -204,6 +204,8 @@ pub enum CcsdsError {
     InvalidPField(u8),
     #[error("APID out of range: 0x{0:03X}")]
     ApidOutOfRange(u16),
+    #[error("sequence count out of range: 0x{0:04X}")]
+    SequenceCountOutOfRange(u16),
     #[error("instance id 0 is reserved")]
     InstanceIdReserved,
     #[error("declared data_length {declared} does not match buffer length {actual}")]
