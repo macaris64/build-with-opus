@@ -63,3 +63,9 @@ def test_r5_duplicate_apid_exits_one():
     rc, _, stderr = run("r5-duplicate-apid")
     assert rc == 1
     assert "R5" in stderr
+
+
+def test_r6_inline_mid_in_apps_exits_one():
+    rc, _, stderr = run("r6-inline-mid-in-apps")
+    assert rc == 1
+    assert "R6" in stderr

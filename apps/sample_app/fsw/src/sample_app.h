@@ -15,11 +15,7 @@
 #include "cfe.h"
 #include "sample_app_events.h"
 #include "sample_app_version.h"
-
-/* Command message IDs — defined here so _defs/targets.cmake can reference them.
- * In a real mission these live in a shared mission MID header. */
-#define SAMPLE_APP_CMD_MID      0x1882U
-#define SAMPLE_APP_SEND_HK_MID  0x1883U
+#include "mids.h"
 
 /* Command codes */
 #define SAMPLE_APP_NOOP_CC      0U

@@ -4,15 +4,15 @@ APID/MID consistency linter for SAKURA-II.
 
 Rules enforced (per docs/dev/linter-specs/apid-mid-lint.md):
 
-  R1. Every _MID macro in apps/**/*.h whose derived APID (value & 0x7FF) is in
+  R1. Every _MID macro in _defs/mids.h whose derived APID (value & 0x7FF) is in
       the usable range 0x100-0x7FE has a row in apid-registry.md.
   R2. Every single-APID non-reserved row in apid-registry.md has a matching
-      _MID macro in apps/**/*.h. Skipped when no valid-range macros are found
-      (Phase 13 _defs/mids.h not yet landed).
+      _MID macro in _defs/mids.h.
   R3. SPACECRAFT_ID in _defs/mission_config.h matches the SCID stated in
       apid-registry.md.
   R4. Every APID in non-reserved apid-registry.md rows falls within 0x100-0x7FE.
-  R5. No two _MID macros in apps/**/*.h derive the same APID.
+  R5. No two _MID macros in _defs/mids.h derive the same APID.
+  R6. No _MID macros in apps/**/*.h — all MIDs must be defined in _defs/mids.h.
 
 Exit codes: 0 pass, 1 violation, 2 I/O error.
 
@@ -46,24 +46,36 @@ def _parse_int(raw: str) -> int:
     return int(raw, 16 if raw.startswith("0x") or raw.startswith("0X") else 10)
 
 
-def parse_mids(apps_root: Path) -> list:
-    """Return list of (macro_name, apid, file_path, lineno) from apps/**/*.h."""
+def parse_mids_from_file(path: Path) -> list:
+    """Return list of (macro_name, apid, mid_value, file_path, lineno) from a header."""
+    results = []
+    if not path.is_file():
+        return results
+    try:
+        lines = path.read_text(encoding="utf-8").splitlines()
+    except OSError:
+        return results
+    for lineno, line in enumerate(lines, 1):
+        m = MID_RE.match(line)
+        if m:
+            name = m.group(1)
+            raw = m.group(2)
+            value = _parse_int(raw)
+            apid = value & 0x07FF
+            results.append((name, apid, value, path, lineno))
+    return results
+
+
+def parse_inline_mids_in_apps(apps_root: Path) -> list:
+    """Return list of (macro_name, apid, file_path, lineno) from apps/**/*.h.
+
+    After Phase 13 this list should always be empty; any entry is a R6 violation.
+    """
     results = []
     if not apps_root.is_dir():
         return results
     for h_file in sorted(apps_root.rglob("*.h")):
-        try:
-            lines = h_file.read_text(encoding="utf-8").splitlines()
-        except OSError:
-            continue
-        for lineno, line in enumerate(lines, 1):
-            m = MID_RE.match(line)
-            if m:
-                name = m.group(1)
-                raw = m.group(2)
-                value = _parse_int(raw)
-                apid = value & 0x07FF
-                results.append((name, apid, h_file, lineno))
+        results.extend(parse_mids_from_file(h_file))
     return results
 
 
@@ -120,7 +132,9 @@ def main() -> int:
     repo = args.repo_root
 
     try:
-        mids = parse_mids(repo / "apps")
+        mids_h_path = repo / "_defs" / "mids.h"
+        canonical_mids = parse_mids_from_file(mids_h_path)
+        inline_mids = parse_inline_mids_in_apps(repo / "apps")
         scid_val, scid_file, scid_line = parse_scid_header(repo / "_defs")
         registry_path = repo / "docs" / "interfaces" / "apid-registry.md"
         registry_scid, registry_rows = parse_registry(registry_path)
@@ -132,21 +146,21 @@ def main() -> int:
     warnings = []
 
     valid_mids = [
-        (n, a, f, l)
-        for n, a, f, l in mids
+        (n, a, v, f, l)
+        for n, a, v, f, l in canonical_mids
         if VALID_APID_LOW <= a <= VALID_APID_HIGH
     ]
     template_mids = [
-        (n, a, f, l)
-        for n, a, f, l in mids
+        (n, a, v, f, l)
+        for n, a, v, f, l in canonical_mids
         if not (VALID_APID_LOW <= a <= VALID_APID_HIGH)
     ]
 
     registry_apids = {apid for apid, _, _, _ in registry_rows}
-    valid_macro_apids = {a for _, a, _, _ in valid_mids}
+    valid_macro_apids = {a for _, a, _v, _, _ in valid_mids}
 
-    # R1: every valid-range MID macro must have a registry row.
-    for name, apid, path, lineno in valid_mids:
+    # R1: every valid-range MID macro in _defs/mids.h must have a registry row.
+    for name, apid, _v, path, lineno in valid_mids:
         if apid not in registry_apids:
             rel = path.relative_to(repo)
             errors.append(
@@ -154,29 +168,23 @@ def main() -> int:
                 f" — no row in docs/interfaces/apid-registry.md (R1)"
             )
 
-    for name, apid, path, lineno in template_mids:
+    for name, apid, _v, path, lineno in template_mids:
         rel = path.relative_to(repo)
         warnings.append(
             f"{rel}:{lineno}: {name} derives APID 0x{apid:03X}"
             " (outside usable range — template placeholder, skipped)"
         )
 
-    # R2: single-APID non-reserved registry rows must have a matching macro.
-    if valid_macro_apids:
-        for apid, is_reserved, is_range, lineno in registry_rows:
-            if is_reserved or is_range:
-                continue
-            if VALID_APID_LOW <= apid <= VALID_APID_HIGH and apid not in valid_macro_apids:
-                rel = registry_path.relative_to(repo)
-                errors.append(
-                    f"{rel}:{lineno}: APID 0x{apid:03X} has no matching"
-                    " _MID macro under apps/** (R2)"
-                )
-    else:
-        print(
-            "apid_mid_lint: note — R2 skipped: no valid-range MID macros found"
-            " (Phase 13 _defs/mids.h not yet landed)"
-        )
+    # R2: single-APID non-reserved registry rows must have a matching macro in _defs/mids.h.
+    for apid, is_reserved, is_range, lineno in registry_rows:
+        if is_reserved or is_range:
+            continue
+        if VALID_APID_LOW <= apid <= VALID_APID_HIGH and apid not in valid_macro_apids:
+            rel = registry_path.relative_to(repo)
+            errors.append(
+                f"{rel}:{lineno}: APID 0x{apid:03X} has no matching"
+                " _MID macro in _defs/mids.h (R2)"
+            )
 
     # R3: SPACECRAFT_ID must match registry SCID.
     if scid_val is None:
@@ -195,7 +203,7 @@ def main() -> int:
             f" — {rel_h} says {scid_val}U, registry says {registry_scid}U (R3)"
         )
 
-    # R4: non-reserved registry APIDss must be in the usable range.
+    # R4: non-reserved registry APIDs must be in the usable range.
     for apid, is_reserved, _, lineno in registry_rows:
         if is_reserved:
             continue
@@ -206,19 +214,33 @@ def main() -> int:
                 " usable range 0x100-0x7FE (R4)"
             )
 
-    # R5: no two valid-range macros may derive the same APID.
+    # R5: no two valid-range macros may derive the same (APID, direction) pair.
+    # Direction is the high-nibble prefix: 0x0800 = TM, 0x1800 = TC. Bidirectional
+    # blocks legitimately assign the same APID to both TM and TC macros — those are
+    # NOT duplicates. Only flag when two macros share the same APID AND the same
+    # direction prefix (true collision).
     seen: dict = {}
-    for name, apid, path, lineno in valid_mids:
-        if apid in seen:
-            prev_name, prev_path, prev_line = seen[apid]
+    for name, apid, value, path, lineno in valid_mids:
+        direction = value & 0xF800
+        key = (apid, direction)
+        if key in seen:
+            prev_name, prev_path, prev_line = seen[key]
             rel = path.relative_to(repo)
             prev_rel = prev_path.relative_to(repo)
             errors.append(
                 f"{rel}:{lineno}: {name} and {prev_rel}:{prev_line}:{prev_name}"
-                f" both derive APID 0x{apid:03X} (R5)"
+                f" both derive APID 0x{apid:03X} with the same direction prefix (R5)"
             )
         else:
-            seen[apid] = (name, path, lineno)
+            seen[key] = (name, path, lineno)
+
+    # R6: no _MID macros in apps/**/*.h — all MIDs must live in _defs/mids.h.
+    for name, apid, _v, path, lineno in inline_mids:
+        rel = path.relative_to(repo)
+        errors.append(
+            f"{rel}:{lineno}: {name} is defined inline in apps/ — "
+            "move to _defs/mids.h (R6)"
+        )
 
     if warnings:
         for w in warnings:
@@ -234,7 +256,7 @@ def main() -> int:
     n_rows = len(registry_rows)
     scid_str = str(registry_scid) if registry_scid is not None else "?"
     print(
-        f"apid_mid_lint: OK — {n_valid} valid-range MID macro(s),"
+        f"apid_mid_lint: OK — {n_valid} valid-range MID macro(s) in _defs/mids.h,"
         f" {n_rows} registry row(s), SCID={scid_str} matches."
     )
     return 0
