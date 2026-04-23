@@ -1,0 +1,293 @@
+# SAKURA-II PR-gate CI
+# Spec: docs/dev/ci-workflow.md
+# Triggers: pull_request (all branches), push to main, workflow_dispatch
+
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+defaults:
+  run:
+    shell: bash
+
+jobs:
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2.1  cfs-ctest — SYS-REQ-0070
+  # ──────────────────────────────────────────────────────────────────────────
+  cfs-ctest:
+    name: cfs-ctest
+    runs-on: ubuntu-22.04
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(toJson(github.event.pull_request.changed_files), 'apps/') ||
+      contains(toJson(github.event.pull_request.changed_files), '_defs/') ||
+      contains(toJson(github.event.pull_request.changed_files), 'CMakeLists.txt')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache cFS build
+        uses: actions/cache@v4
+        with:
+          path: build/
+          key: ${{ runner.os }}-cfs-${{ hashFiles('apps/**/CMakeLists.txt', '_defs/**') }}
+          restore-keys: ${{ runner.os }}-cfs-
+
+      - name: Install cmake and build tools
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends cmake ninja-build gcc g++ libcmocka-dev
+
+      - name: Configure
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Debug
+
+      - name: Build
+        run: cmake --build build
+
+      - name: Test
+        run: ctest --test-dir build --output-on-failure
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2.2  ros2-colcon — V&V-Plan §2.1
+  # ──────────────────────────────────────────────────────────────────────────
+  ros2-colcon:
+    name: ros2-colcon
+    runs-on: ubuntu-22.04
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(toJson(github.event.pull_request.changed_files), 'ros2_ws/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache colcon build
+        uses: actions/cache@v4
+        with:
+          path: |
+            ros2_ws/build
+            ros2_ws/install
+          key: ${{ runner.os }}-colcon-${{ hashFiles('ros2_ws/**/package.xml') }}
+          restore-keys: ${{ runner.os }}-colcon-
+
+      - name: Build and test (Space ROS container)
+        uses: docker/build-push-action@v5
+        with:
+          context: .
+          file: .ci/ros2.Dockerfile
+          push: false
+          tags: sakura-ci/ros2:local
+
+      - name: Run colcon build and test
+        run: |
+          docker run --rm \
+            -v "${{ github.workspace }}/ros2_ws:/workspace/ros2_ws" \
+            sakura-ci/ros2:local \
+            bash -c "
+              source /opt/ros/humble/setup.bash &&
+              cd /workspace &&
+              colcon build --base-paths ros2_ws/src --symlink-install &&
+              colcon test --base-paths ros2_ws/src &&
+              colcon test-result --verbose
+            "
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2.3  rust-cargo — SYS-REQ-0071, SYS-REQ-0073, V&V-Plan §5.2
+  # ──────────────────────────────────────────────────────────────────────────
+  rust-cargo:
+    name: rust-cargo
+    runs-on: ubuntu-22.04
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(toJson(github.event.pull_request.changed_files), 'rust/') ||
+      contains(toJson(github.event.pull_request.changed_files), 'Cargo.toml') ||
+      contains(toJson(github.event.pull_request.changed_files), 'Cargo.lock')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Rust toolchain
+        uses: dtolnay/rust-toolchain@stable
+
+      - name: Cache Cargo registry
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.cargo/registry
+            ~/.cargo/git
+          key: ${{ runner.os }}-cargo-${{ hashFiles('rust/Cargo.lock') }}
+          restore-keys: ${{ runner.os }}-cargo-
+
+      - name: Cache Cargo target dir
+        uses: actions/cache@v4
+        with:
+          path: rust/target
+          key: ${{ runner.os }}-cargo-target-${{ hashFiles('rust/Cargo.lock') }}-${{ hashFiles('rust/**/*.rs') }}
+          restore-keys: ${{ runner.os }}-cargo-target-
+
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+
+      - name: cargo test
+        run: cargo test --workspace --all-features
+
+      - name: cargo clippy
+        run: cargo clippy --workspace --all-targets -- -D warnings
+
+      - name: cargo audit
+        run: cargo audit --deny warnings
+
+      - name: Q-C8 grep guards
+        run: bash scripts/grep-lints.sh
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2.4  cppcheck — SYS-REQ-0072
+  # ──────────────────────────────────────────────────────────────────────────
+  cppcheck:
+    name: cppcheck
+    runs-on: ubuntu-22.04
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(toJson(github.event.pull_request.changed_files), 'apps/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install cppcheck
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends cppcheck
+
+      - name: Run cppcheck
+        run: cppcheck --enable=all --std=c17 --error-exitcode=1 apps/
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2.5  traceability-lint — SYS-REQ-0080
+  # ──────────────────────────────────────────────────────────────────────────
+  traceability-lint:
+    name: traceability-lint
+    runs-on: ubuntu-22.04
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(toJson(github.event.pull_request.changed_files), 'docs/mission/requirements/') ||
+      contains(toJson(github.event.pull_request.changed_files), 'docs/mission/verification/V&V-Plan.md')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run traceability-lint
+        run: python3 scripts/traceability-lint.py --repo-root .
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2.6  apid-mid-lint — apid-registry change control
+  # ──────────────────────────────────────────────────────────────────────────
+  apid-mid-lint:
+    name: apid-mid-lint
+    runs-on: ubuntu-22.04
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run apid-mid-lint
+        run: python3 scripts/apid_mid_lint.py --repo-root .
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2.7  citation-lint — references.md preamble
+  # ──────────────────────────────────────────────────────────────────────────
+  citation-lint:
+    name: citation-lint
+    runs-on: ubuntu-22.04
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(toJson(github.event.pull_request.changed_files), 'docs/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Run citation-lint
+        run: python3 scripts/citation_lint.py --repo-root .
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2.8  link-check — V&V-Plan §7.2
+  # ──────────────────────────────────────────────────────────────────────────
+  link-check:
+    name: link-check
+    runs-on: ubuntu-22.04
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(toJson(github.event.pull_request.changed_files), 'docs/') ||
+      contains(toJson(github.event.pull_request.changed_files), 'README.md')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Node tooling
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            .ci/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('.ci/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-node-
+
+      - name: Install Node tooling
+        run: cd .ci && npm ci
+
+      - name: Run markdown-link-check
+        run: |
+          find docs -name "*.md" -print0 | \
+            xargs -0 -I{} .ci/node_modules/.bin/markdown-link-check \
+              --config .ci/markdown-link-check.json {}
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2.9  plantuml-parse — V&V-Plan §7.2
+  # ──────────────────────────────────────────────────────────────────────────
+  plantuml-parse:
+    name: plantuml-parse
+    runs-on: ubuntu-22.04
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(toJson(github.event.pull_request.changed_files), '.puml')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install PlantUML
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends plantuml
+
+      - name: Parse PlantUML diagrams
+        run: |
+          if compgen -G "docs/architecture/diagrams/*.puml" > /dev/null; then
+            plantuml -checkonly docs/architecture/diagrams/*.puml
+          else
+            echo "plantuml-parse: no .puml files found — skipping."
+          fi
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # 2.10 mermaid-parse — V&V-Plan §7.2
+  # ──────────────────────────────────────────────────────────────────────────
+  mermaid-parse:
+    name: mermaid-parse
+    runs-on: ubuntu-22.04
+    if: |
+      github.event_name != 'pull_request' ||
+      contains(toJson(github.event.pull_request.changed_files), 'docs/')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache Node tooling
+        uses: actions/cache@v4
+        with:
+          path: |
+            ~/.npm
+            .ci/node_modules
+          key: ${{ runner.os }}-node-${{ hashFiles('.ci/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-node-
+
+      - name: Install Node tooling
+        run: cd .ci && npm ci
+
+      - name: Parse Mermaid blocks
+        run: |
+          export PATH=".ci/node_modules/.bin:$PATH"
+          bash scripts/mermaid-parse.sh docs/

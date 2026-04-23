@@ -1,0 +1,6 @@
+#ifndef MISSION_CONFIG_H
+#define MISSION_CONFIG_H
+
+#define SPACECRAFT_ID 42U
+
+#endif
