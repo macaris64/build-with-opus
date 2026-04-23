@@ -2,13 +2,11 @@
 //!
 //! Definition site: [`docs/architecture/06-ground-segment-rust.md §2.8`]
 //! (../../../docs/architecture/06-ground-segment-rust.md). The enum is
-//! intentionally **not** `#[non_exhaustive]` — adding a variant is a
-//! semver-breaking API change that requires a doc update. The Phase 05
-//! Definition-of-Done grep guard (`rg '#[non_exhaustive]' src/error.rs` → 0)
-//! enforces this.
+//! intentionally exhaustive — adding a variant is a semver-breaking API
+//! change that requires a doc update. The Phase 05 Definition-of-Done
+//! enforces this via a grep guard on this file that must return zero matches.
 //!
-//! Phase 05 folds the module-local placeholder errors from Phases 03–04
-//! (`ApidError`, `SequenceCountError`, `FuncCodeError`, `InstanceIdError`)
+//! Phase 05 folded the module-local placeholder errors from Phases 03–04
 //! into this enum. The 9th variant — `SequenceCountOutOfRange(u16)` —
 //! resolves [`Q-C10`](../../../docs/standards/decisions-log.md) as
 //! option (a): the 14-bit ceiling stays at the `SequenceCount::new`

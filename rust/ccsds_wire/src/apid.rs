@@ -2,25 +2,15 @@
 //!
 //! Sealed newtype, Phase 03 locus. Pattern replicated by Phase 04 for the
 //! sized newtypes (`SequenceCount`, `PacketDataLength`, `FuncCode`,
-//! `InstanceId`). Definition sites:
+//! `InstanceId`); all four report invariant violations through the unified
+//! [`crate::CcsdsError`] folded in by Phase 05. Definition sites:
 //! - `docs/architecture/06-ground-segment-rust.md §2.2` — invariants
+//! - `docs/architecture/06-ground-segment-rust.md §2.8` — error enum
 //! - `docs/interfaces/apid-registry.md` — `0x7FF` reserved as Idle / fill
 //! - `SYS-REQ-0026` — class-based allocation; instance multiplicity via
 //!   the secondary-header `instance_id`, never by burning extra APIDs
 
-/// APID construction error.
-///
-/// Temporary module-local enum per the Phase 03 Phase Card: carries only
-/// `#[derive(Debug)]` (plus `PartialEq`/`Eq` so tests can `assert_eq!`).
-/// Phase 05 folds this variant into the unified `crate::CcsdsError` enum
-/// (arch §2.8), at which point `Apid::new` returns `Result<Self, CcsdsError>`
-/// and this type is deleted.
-#[derive(Debug, PartialEq, Eq)]
-pub enum ApidError {
-    /// Raw value exceeded the 11-bit APID ceiling (`> 0x7FF`). The raw input
-    /// is preserved so callers can log or surface the offending value.
-    ApidOutOfRange(u16),
-}
+use crate::CcsdsError;
 
 /// 11-bit CCSDS Application Process Identifier.
 ///
@@ -54,11 +44,11 @@ impl Apid {
     ///
     /// # Errors
     ///
-    /// Returns [`ApidError::ApidOutOfRange`] if `v > 0x7FF`. The error
+    /// Returns [`CcsdsError::ApidOutOfRange`] if `v > 0x7FF`. The error
     /// carries `v` unchanged so the caller can log it verbatim.
-    pub const fn new(v: u16) -> Result<Self, ApidError> {
+    pub const fn new(v: u16) -> Result<Self, CcsdsError> {
         if v > Self::MAX {
-            Err(ApidError::ApidOutOfRange(v))
+            Err(CcsdsError::ApidOutOfRange(v))
         } else {
             Ok(Apid(v))
         }
@@ -83,15 +73,13 @@ mod tests {
     // --- RED test (Phase 03 Phase Card DoD, line 1) ------------------------
     // Given: an APID value one past the 11-bit ceiling.
     // When:  constructed through the sealed boundary.
-    // Then:  construction fails with `ApidError::ApidOutOfRange(v)`
-    //        carrying the offending raw value (per arch §2.8 ultimate
-    //        target `CcsdsError::ApidOutOfRange(u16)`; landed locally
-    //        as `ApidError` this phase, folded in Phase 05).
+    // Then:  construction fails with `CcsdsError::ApidOutOfRange(v)`
+    //        carrying the offending raw value (arch §2.8).
     #[test]
     fn test_new_returns_err_when_apid_exceeds_11_bit_range() {
         let raw: u16 = 0x800;
         let result = Apid::new(raw);
-        assert_eq!(result, Err(ApidError::ApidOutOfRange(0x800)));
+        assert_eq!(result, Err(CcsdsError::ApidOutOfRange(0x800)));
     }
 
     // --- DoD line 2: `Apid::new(0x7FF) == Apid::IDLE` ------------------------
@@ -139,7 +127,7 @@ mod tests {
     #[test]
     fn test_new_returns_err_when_apid_is_u16_max() {
         let result = Apid::new(u16::MAX);
-        assert_eq!(result, Err(ApidError::ApidOutOfRange(u16::MAX)));
+        assert_eq!(result, Err(CcsdsError::ApidOutOfRange(u16::MAX)));
     }
 
     // --- Accessor: IDLE constant reports raw 0x7FF --------------------------
