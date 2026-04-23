@@ -25,18 +25,48 @@ include!(concat!(env!("OUT_DIR"), "/mission_config_bindings.rs"));
 /// a safety invariant.
 pub mod mission {
     // Bindgen `#define` constant — plain integer, no pointer indirection.
-    pub const MAX_PIPES: u32 = super::SAMPLE_MISSION_MAX_PIPES;
+    pub const MAX_PIPES: u32 = super::SAKURA_II_MAX_PIPES;
 
     // Bindgen `#define` constant — same rationale as MAX_PIPES.
-    pub const TASK_STACK_BYTES: u32 = super::SAMPLE_MISSION_TASK_STACK;
+    pub const TASK_STACK_BYTES: u32 = super::SAKURA_II_TASK_STACK;
 
     // Bindgen `#define` constant — same rationale as MAX_PIPES.
     pub const SPACECRAFT_ID: u32 = super::SPACECRAFT_ID;
+
+    // Bindgen `#define` constant — fleet-allocation anchor; instance N
+    // derives SPACECRAFT_ID = SCID_BASE + N (see
+    // docs/interfaces/apid-registry.md §Identifiers and Ranges).
+    pub const SCID_BASE: u32 = super::SAKURA_II_SCID_BASE;
+
+    // Canonical mission name. Bindgen 0.69 does not emit string `#define`s
+    // as Rust constants, so the value is mirrored here and cross-checked
+    // against `_defs/targets.cmake` by `tests::test_mission_name_is_sakura_ii`
+    // to prevent drift.
+    pub const MISSION_NAME: &str = "SAKURA_II";
 }
 
 #[cfg(test)]
 mod tests {
     use super::mission;
+
+    /// Embedded verbatim copy of `_defs/targets.cmake` at compile time.
+    /// Used by `test_mission_name_is_sakura_ii` as a drift detector between
+    /// the `CMake` mission name and the Rust re-export.
+    const TARGETS_CMAKE: &str = include_str!("../../../_defs/targets.cmake");
+
+    #[test]
+    fn test_mission_name_is_sakura_ii() {
+        /* Given _defs/targets.cmake sets `MISSION_NAME "SAKURA_II"` and
+         *   cfs_bindings re-exports it as `mission::MISSION_NAME`.
+         * When  a consumer reads `mission::MISSION_NAME`.
+         * Then  the value is `"SAKURA_II"` and the embedded
+         *   `_defs/targets.cmake` agrees (drift detector). */
+        assert_eq!(mission::MISSION_NAME, "SAKURA_II");
+        assert!(
+            TARGETS_CMAKE.contains(r#"set(MISSION_NAME "SAKURA_II")"#),
+            "_defs/targets.cmake must carry `set(MISSION_NAME \"SAKURA_II\")`"
+        );
+    }
 
     #[test]
     fn test_max_pipes_is_nonzero() {
@@ -64,6 +94,19 @@ mod tests {
             assert!(
                 mission::SPACECRAFT_ID <= 2047,
                 "spacecraft ID must fit in 11-bit APID field"
+            );
+        };
+    }
+
+    #[test]
+    fn test_scid_base_anchors_spacecraft_id() {
+        /* Single-instance repo: the deployed SCID is exactly the fleet
+         * anchor. Multi-instance deployments will relax this to
+         * `SPACECRAFT_ID >= SCID_BASE` and bound by a per-mission ceiling. */
+        const {
+            assert!(
+                mission::SCID_BASE == mission::SPACECRAFT_ID,
+                "single-instance SAKURA-II must deploy with SPACECRAFT_ID == SCID_BASE"
             );
         };
     }

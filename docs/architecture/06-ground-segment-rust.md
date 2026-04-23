@@ -247,7 +247,7 @@ The following property-test names are normative — the scaffolding PR MUST comm
 
 ### 3.1 Present scope
 
-The existing crate at [`rust/cfs_bindings/`](../../rust/cfs_bindings/) invokes `bindgen` (build-dep only) to emit Rust constants from [`_defs/mission_config.h`](../../_defs/mission_config.h) (`SPACECRAFT_ID`, `SAMPLE_MISSION_MAX_PIPES`, `SAMPLE_MISSION_TASK_STACK`). The safe-wrapper `mission` module validates the 11-bit APID invariant on `SPACECRAFT_ID`.
+The existing crate at [`rust/cfs_bindings/`](../../rust/cfs_bindings/) invokes `bindgen` (build-dep only) to emit Rust constants from [`_defs/mission_config.h`](../../_defs/mission_config.h) (`SPACECRAFT_ID`, `SAKURA_II_SCID_BASE`, `SAKURA_II_MAX_PIPES`, `SAKURA_II_TASK_STACK`). The safe-wrapper `mission` module validates the 11-bit APID invariant on `SPACECRAFT_ID`, asserts `SCID_BASE` anchors `SPACECRAFT_ID`, and re-exports `MISSION_NAME` as a Rust `&str` cross-checked against `_defs/targets.cmake` at test time (Phase 11 drift detector; bindgen 0.69 does not emit string `#define`s by default).
 
 ### 3.2 Expanded scope (scaffolding PR)
 

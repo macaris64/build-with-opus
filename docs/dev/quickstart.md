@@ -72,10 +72,10 @@ cmake --build build
 Expected output from [`_defs/targets.cmake`](../../_defs/targets.cmake):
 
 ```
--- Mission: SAMPLE_MISSION  SCID: 42  Apps: sample_app
+-- Mission: SAKURA_II  SCID: 42  Apps: sample_app
 ```
 
-The `SAMPLE_MISSION` / `SCID=42` placeholder will be renamed to `SAKURA_II` when the mission-named build lands (see [../interfaces/apid-registry.md](../interfaces/apid-registry.md) §Identifiers). SCID must match [`_defs/mission_config.h`](../../_defs/mission_config.h); the APID/MID linter (planned) will enforce this.
+SCID must match [`_defs/mission_config.h`](../../_defs/mission_config.h); fleet SCID allocation anchors on `SAKURA_II_SCID_BASE` (see [../interfaces/apid-registry.md](../interfaces/apid-registry.md) §Identifiers). The APID/MID linter (`scripts/apid_mid_lint.py`) enforces the registry ↔ header consistency.
 
 Run C unit tests:
 

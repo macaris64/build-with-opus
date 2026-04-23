@@ -50,10 +50,10 @@ Single source of truth for compile-time mission parameters. Every doc that cites
 
 | File | Purpose | Docs that mirror it |
 |---|---|---|
-| [`_defs/mission_config.h`](../_defs/mission_config.h) | `SPACECRAFT_ID`, `SAMPLE_MISSION_MAX_PIPES`, `SAMPLE_MISSION_TASK_STACK` | [`interfaces/apid-registry.md`](interfaces/apid-registry.md) — SCID must match |
+| [`_defs/mission_config.h`](../_defs/mission_config.h) | `MISSION_NAME`, `SPACECRAFT_ID`, `SAKURA_II_SCID_BASE`, `SAKURA_II_MAX_PIPES`, `SAKURA_II_TASK_STACK` | [`interfaces/apid-registry.md`](interfaces/apid-registry.md) — SCID must match |
 | [`_defs/targets.cmake`](../_defs/targets.cmake) | `MISSION_NAME`, `MISSION_APPS` app list | [`architecture/01-orbiter-cfs.md`](architecture/01-orbiter-cfs.md) (planned) — app inventory must match |
 
-The `MISSION_NAME = "SAMPLE_MISSION"` placeholder will be renamed to `SAKURA_II` when the first real mission-named build lands; this repo is currently still template-shaped.
+`MISSION_NAME` was renamed from the template placeholder `SAMPLE_MISSION` to `SAKURA_II` in Phase 11, alongside the `SAKURA_II_SCID_BASE` fleet-allocation anchor; the original SCID value `42U` was retained. Historical note preserved here for changelog-style traceability.
 
 ## `apps/` — Flight Software
 

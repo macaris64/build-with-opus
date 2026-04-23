@@ -171,8 +171,8 @@ Canonical reference in-tree: [`apps/sample_app/fsw/src/sample_app.c`](../../apps
 ## 6. Memory & Stack Discipline
 
 - **No dynamic allocation** anywhere under `apps/` — `malloc`/`calloc`/`realloc`/`free` are banned per [.claude/rules/general.md](../../.claude/rules/general.md). All buffers are statically sized.
-- **Task stack depth** defaults to `SAMPLE_MISSION_TASK_STACK = 8192` bytes from [`../../_defs/mission_config.h`](../../_defs/mission_config.h). Apps that require more declare their own constant in their `_app.h` and justify it in-file.
-- **Pipe depths** cap at `SAMPLE_MISSION_MAX_PIPES = 8` per app; higher depth requires a config header override and a rationale.
+- **Task stack depth** defaults to `SAKURA_II_TASK_STACK = 8192` bytes from [`../../_defs/mission_config.h`](../../_defs/mission_config.h). Apps that require more declare their own constant in their `_app.h` and justify it in-file.
+- **Pipe depths** cap at `SAKURA_II_MAX_PIPES = 8` per app; higher depth requires a config header override and a rationale.
 - **VLAs forbidden** per MISRA Rule 18.8 ([.claude/rules/security.md](../../.claude/rules/security.md)).
 - `.critical_mem` section anchor is reserved for EDAC-protected state per [Q-F3](../standards/decisions-log.md) (definition site: [09-failure-and-radiation.md §5.1](09-failure-and-radiation.md)).
 
