@@ -37,8 +37,10 @@ serde      = { version = "1", features = ["derive"] }
 #   unsafe_code       deny  — Q-C8 / Q-F3: unsafe is opt-in per crate with a
 #                             `// SAFETY:` comment (see .claude/rules/general.md).
 #   clippy::all       deny  — hard floor; correctness + style + perf.
-#   clippy::pedantic  warn  — signal without blocking prototypes; DoD runs
-#                             clippy with -D warnings so CI still enforces.
+#   clippy::pedantic  warn  — kept at warn (not deny) so individual pedantic
+#                             lints can be downgraded at crate level without
+#                             needing an explicit per-lint override. In CI
+#                             `-D warnings` makes these block anyway.
 #   unwrap_used/expect_used/panic  deny  — zero-panic invariant (arch doc §2.1).
 #   indexing_slicing  warn  — prefers .get(); too noisy as deny during Phase B.
 #   cast_lossless     warn  — catches silent u8→u32 widenings.
