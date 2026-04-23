@@ -1,17 +1,26 @@
+// This module's BE-only parser is the functional seed for
+// `ccsds_wire::primary_header`; the Phase C Step 2 scaffolding PR migrates
+// the type, error enum, and tests out per
+// `docs/architecture/06-ground-segment-rust.md §1.6`. The allowances below
+// keep the existing code building against the Phase 01 workspace lint
+// block without pre-emptively refactoring what §1.6 will replace
+// wholesale. Remove them at migration time.
+#![allow(clippy::indexing_slicing, clippy::missing_panics_doc)]
+
 /// CCSDS Space Packet Protocol secondary header (telemetry).
-/// Layout matches the cFS telemetry header defined in cfe_msg.h.
-#[derive(Debug, PartialEq)]
+/// Layout matches the cFS telemetry header defined in `cfe_msg.h`.
+#[derive(Debug, PartialEq, Eq)]
 pub struct TelemetryPacket {
     /// Application Process Identifier (11 bits, masked from primary header)
     pub apid: u16,
     /// Packet sequence count (14 bits)
     pub sequence_count: u16,
-    /// Packet data length in bytes (value = total_length - 7)
+    /// Packet data length in bytes (value = `total_length` - 7)
     pub data_length: u16,
 }
 
 /// Errors that can occur when parsing a raw CCSDS telemetry packet.
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Eq)]
 pub enum ParseError {
     /// Buffer is shorter than the 6-byte primary header
     TooShort,
@@ -63,6 +72,7 @@ pub fn parse(raw: &[u8]) -> Result<TelemetryPacket, ParseError> {
 }
 
 #[cfg(test)]
+#[allow(clippy::expect_used)]
 mod tests {
     use super::*;
 

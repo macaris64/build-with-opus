@@ -13,3 +13,12 @@ bindgen = "0.69"
 
 [dependencies]
 log = { workspace = true }
+
+[lints]
+workspace = true
+
+# The workspace-wide `unsafe_code = deny` is overridden for this crate only
+# via a crate-root `#![allow(unsafe_code)]` attribute in src/lib.rs, because
+# bindgen-generated FFI may emit `unsafe extern "C"` blocks and raw pointer
+# types. See docs/architecture/06-ground-segment-rust.md §1.2 — the override
+# is explicitly authorised for `cfs_bindings` only.
