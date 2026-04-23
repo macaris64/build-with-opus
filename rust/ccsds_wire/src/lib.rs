@@ -16,5 +16,10 @@
 #![warn(rust_2018_idioms)]
 
 pub mod apid;
+pub mod primitives;
 
 pub use apid::{Apid, ApidError};
+pub use primitives::{
+    FuncCode, FuncCodeError, InstanceId, InstanceIdError, PacketDataLength, SequenceCount,
+    SequenceCountError,
+};

@@ -157,7 +157,7 @@ A milestone phase is `[ TEST ]`-badged (§4.2) and produces a **hard deliverable
 | `[✅]` 01 | 🔵 ARCH | Workspace bootstrap (lints, toolchain, cargo config) | `feat/phase-01-workspace-bootstrap` | `claude-opus-4-7` | M | 100 % ✅ |
 | `[✅]` 02 | 🔵 ARCH | `ccsds_wire` crate skeleton | `feat/phase-02-ccsds-wire-skeleton` | `claude-opus-4-7` | L | 100 % ✅ |
 | `[✅]` 03 | 🔴 CRIT | `Apid` newtype + IDLE sentinel | `feat/phase-03-apid-newtype` | `claude-opus-4-7` | M | 100 % ✅ |
-| `[ ]` 04 | 🔴 CRIT | Sequence / length / funccode / instance newtypes | `feat/phase-04-sized-newtypes` | `claude-opus-4-7` | M | 100 % ✅ |
+| `[✅]` 04 | 🔴 CRIT | Sequence / length / funccode / instance newtypes | `feat/phase-04-sized-newtypes` | `claude-opus-4-7` | M | 100 % ✅ |
 | `[ ]` 05 | 🔴 CRIT | `PacketType` + `CcsdsError` enums | `feat/phase-05-error-enum` | `claude-opus-4-7` | L | 100 % ✅ |
 | `[ ]` 06 | 🔴 CRIT | `Cuc` struct + BE codec + P-Field 0x2F | `feat/phase-06-cuc-codec` | `claude-opus-4-7` | H | 100 % ✅ |
 | `[ ]` 07 | 🔴 CRIT | `PrimaryHeader` encode / decode | `feat/phase-07-primary-header` | `claude-opus-4-7` | H | 100 % ✅ |
