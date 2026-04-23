@@ -103,7 +103,8 @@ impl<'a> SpacePacket<'a> {
     clippy::unwrap_used,
     clippy::panic,
     clippy::expect_used,
-    clippy::cast_possible_truncation
+    clippy::cast_possible_truncation,
+    clippy::indexing_slicing
 )]
 mod tests {
     use super::*;

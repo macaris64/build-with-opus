@@ -40,10 +40,12 @@ mod tests {
 
     #[test]
     fn test_max_pipes_is_nonzero() {
-        assert!(
-            mission::MAX_PIPES > 0,
-            "mission must allow at least one pipe"
-        );
+        const {
+            assert!(
+                mission::MAX_PIPES > 0,
+                "mission must allow at least one pipe"
+            );
+        };
     }
 
     #[test]
@@ -58,9 +60,11 @@ mod tests {
     #[test]
     fn test_spacecraft_id_is_in_valid_apid_range() {
         /* CCSDS APIDs are 11-bit values (0–2047) */
-        assert!(
-            mission::SPACECRAFT_ID <= 2047,
-            "spacecraft ID must fit in 11-bit APID field"
-        );
+        const {
+            assert!(
+                mission::SPACECRAFT_ID <= 2047,
+                "spacecraft ID must fit in 11-bit APID field"
+            );
+        };
     }
 }

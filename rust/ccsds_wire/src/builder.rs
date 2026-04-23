@@ -296,8 +296,7 @@ mod tests {
             .build();
         assert!(
             matches!(result, Err(CcsdsError::LengthMismatch { .. })),
-            "expected LengthMismatch, got {:?}",
-            result,
+            "expected LengthMismatch, got {result:?}",
         );
     }
 }

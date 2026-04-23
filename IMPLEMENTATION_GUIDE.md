@@ -163,7 +163,7 @@ A milestone phase is `[ TEST ]`-badged (§4.2) and produces a **hard deliverable
 | `[✅]` 07 | 🔴 CRIT | `PrimaryHeader` encode / decode | `feat/phase-07-primary-header` | `claude-opus-4-7` | H | 100 % ✅ |
 | `[✅]` 08 | 🔴 CRIT | `SecondaryHeader` + `time_suspect` | `feat/phase-08-secondary-header` | `claude-opus-4-7` | H | 100 % ✅ |
 | `[✅]` 09 | 🟢 FEAT | `SpacePacket<'a>` + `PacketBuilder` | `feat/phase-09-space-packet` | `claude-sonnet-4-6` | M | 100 % ✅ |
-| `[ ]` 10 | 🧪 TEST | **MILESTONE 1/5 — `ccsds_wire v1.0`** | `feat/phase-10-ccsds-wire-milestone` | `claude-sonnet-4-6` | H | 100 % ✅ |
+| `[x]` 10 | 🧪 TEST | **MILESTONE 1/5 — `ccsds_wire v1.0`** | `feat/phase-10-ccsds-wire-milestone` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[ ]` 11 | 🔵 ARCH | Rename SAMPLE_MISSION → SAKURA_II + SCID hook | `feat/phase-11-mission-rename` | `claude-opus-4-7` | L | 100 % ✅ |
 | `[ ]` 12 | 🟢 FEAT | `cfs_bindings` safe wrappers (CFE_MSG / CFE_SB) | `feat/phase-12-cfs-msg-wrappers` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[ ]` 13 | 🟢 FEAT | `_defs/mids.h` + `cfs_bindings::mids` | `feat/phase-13-mid-macros` | `claude-sonnet-4-6` | L | 100 % ✅ |
