@@ -92,7 +92,7 @@ static int32 SAMPLE_APP_Init(void)
         return status;
     }
 
-    status = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(SAMPLE_APP_SEND_HK_MID), SAMPLE_APP_Data.CmdPipe);
+    status = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(SAMPLE_APP_HK_MID), SAMPLE_APP_Data.CmdPipe);
     if (status != CFE_SUCCESS)
     {
         return status;

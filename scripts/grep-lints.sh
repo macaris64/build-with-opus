@@ -42,6 +42,14 @@ if rg 'SAMPLE_MISSION' . \
     FAIL=1
 fi
 
+# Phase 13: No inline MID hex literals in apps/. All MIDs must be defined in
+# _defs/mids.h. Pattern matches cFE v1 TC-prefix values (0x1xxx) that would
+# indicate an inline literal rather than a macro reference.
+if rg '0x1[0-9A-Fa-f]{3}U' apps/ -g '*.h' -g '*.c' -q 2>/dev/null; then
+    echo "ERROR: inline MID hex literal found in apps/ (Phase 13 violation — use _defs/mids.h macros)" >&2
+    FAIL=1
+fi
+
 if [ "$FAIL" -eq 0 ]; then
     echo "All grep-lints passed."
 fi

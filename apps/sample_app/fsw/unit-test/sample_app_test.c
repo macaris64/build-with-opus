@@ -107,7 +107,7 @@ static void test_init_success(void **state)
     will_return(CFE_SB_CreatePipe,  1);           /* pipe handle */
     will_return(CFE_SB_CreatePipe,  CFE_SUCCESS);
     will_return(CFE_SB_Subscribe,   CFE_SUCCESS); /* CMD_MID */
-    will_return(CFE_SB_Subscribe,   CFE_SUCCESS); /* SEND_HK_MID */
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS); /* HK_MID */
 
     /* Drive AppMain through one loop iteration then exit */
     will_return(CFE_ES_RunLoop, false);

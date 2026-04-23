@@ -17,6 +17,8 @@
 pub mod message;
 pub use message::{Message, MsgId, SbBuffer};
 
+pub mod mids;
+
 include!(concat!(env!("OUT_DIR"), "/mission_config_bindings.rs"));
 
 /// Mission configuration constants re-exported with idiomatic Rust names.
