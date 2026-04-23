@@ -59,3 +59,9 @@ indexing_slicing   = "warn"
 cast_lossless      = "warn"
 missing_errors_doc = "warn"
 missing_panics_doc = "warn"
+
+# Pre-allowed pedantic lints that fire on idiomatic module layouts
+# (e.g. `primary_header::PrimaryHeaderError` per arch doc §1.6). Left as
+# `warn` they would generate CI noise the moment Phase 02's ccsds_wire
+# modules land. Revisit if this hides a real issue during review.
+module_name_repetitions = "allow"
