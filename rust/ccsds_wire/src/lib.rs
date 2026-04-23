@@ -5,3 +5,4 @@
 //! succeeds; no public types land here yet.
 
 #![forbid(unsafe_code)]
+#![deny(clippy::all)]
