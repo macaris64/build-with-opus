@@ -13,3 +13,6 @@ bindgen = "0.69"
 
 [dependencies]
 log = { workspace = true }
+
+[lints]
+workspace = true

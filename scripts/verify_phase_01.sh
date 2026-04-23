@@ -25,7 +25,9 @@ if cargo build --manifest-path rust/_lint_probe/Cargo.toml 2>"$probe_log"; then
     exit 1
 fi
 
-grep -q 'unsafe_code'    "$probe_log" || { echo "FAIL: probe stderr missing 'unsafe_code'"    >&2; cat "$probe_log" >&2; exit 1; }
-grep -q 'unused_imports' "$probe_log" || { echo "FAIL: probe stderr missing 'unused_imports'" >&2; cat "$probe_log" >&2; exit 1; }
+# rustc prints lint names with hyphens in the `-D lint-name` note, so match
+# either hyphen or underscore form as well as the human-readable error text.
+grep -qE 'unsafe[-_]code|unsafe block'       "$probe_log" || { echo "FAIL: probe stderr missing 'unsafe_code'"    >&2; cat "$probe_log" >&2; exit 1; }
+grep -qE 'unused[-_]imports|unused import'   "$probe_log" || { echo "FAIL: probe stderr missing 'unused_imports'" >&2; cat "$probe_log" >&2; exit 1; }
 
 echo "OK: Phase 01 DoD gates all pass."

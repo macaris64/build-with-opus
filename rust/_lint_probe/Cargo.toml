@@ -4,12 +4,10 @@
 # and that the `.cargo/config.toml` rustflags turn `unused_imports` into
 # a build error.
 #
-# Current state: NO `[lints]` block yet. Phase 01 Green commit pastes the
-# block from `docs/architecture/06-ground-segment-rust.md §1.2` so the
-# `unsafe {}` and dead import in `src/lib.rs` cause the build to fail —
-# proving the workspace lint policy actually fires.
-#
-# If you ever change the root workspace lint block, update this file too.
+# The lint block below MUST stay in sync with the root workspace lint
+# block in /Cargo.toml — if you add/remove lints there, mirror them here.
+# This duplication is the cost of keeping this fixture isolated from the
+# main workspace so `cargo build --workspace` at the root remains green.
 
 [package]
 name = "_lint_probe"
@@ -18,3 +16,18 @@ edition = "2021"
 publish = false
 
 [workspace]
+
+[lints.rust]
+unsafe_code = "deny"
+
+[lints.clippy]
+all      = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+unwrap_used        = "deny"
+expect_used        = "deny"
+panic              = "deny"
+indexing_slicing   = "warn"
+cast_lossless      = "warn"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"

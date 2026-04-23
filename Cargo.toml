@@ -2,10 +2,60 @@
 members = [
     "rust/ground_station",
     "rust/cfs_bindings",
+    "rust/ccsds_wire",
 ]
 resolver = "2"
 
+# Shared dependency versions. Crate-level Cargo.tomls reference these via
+# `{ workspace = true }`. Added by Phase 01 per
+# docs/architecture/06-ground-segment-rust.md §1.2.
 [workspace.dependencies]
-anyhow  = "1"
-log     = "0.4"
+anyhow     = "1"
+log        = "0.4"
 env_logger = "0.11"
+
+# CFDP. Doc §4.5 and the Phase 01 card both use the identifier `cfdp-core`;
+# upstream is published on crates.io as `cfdp-rs`. The `package` rename below
+# keeps Rust call sites saying `use cfdp_core::...` (matching the arch doc)
+# while resolving to the real published crate.
+cfdp-core  = { package = "cfdp-rs", version = "0.3" }
+
+tokio      = { version = "1", features = ["sync", "rt-multi-thread", "macros", "time"] }
+bytes      = "1"
+thiserror  = "1"
+crc        = "3"
+proptest   = "1"
+serde      = { version = "1", features = ["derive"] }
+
+# Workspace-wide lint policy. Verbatim from
+# docs/architecture/06-ground-segment-rust.md §1.2. Each member crate opts
+# in with `[lints] workspace = true`. Violations become errors under
+# `cargo clippy --workspace -- -D warnings` (the Phase 01 DoD gate) and,
+# for the compiler lint, under `.cargo/config.toml` rustflags.
+#
+# Rationale key:
+#   unsafe_code       deny  — Q-C8 / Q-F3: unsafe is opt-in per crate with a
+#                             `// SAFETY:` comment (see .claude/rules/general.md).
+#   clippy::all       deny  — hard floor; correctness + style + perf.
+#   clippy::pedantic  warn  — signal without blocking prototypes; DoD runs
+#                             clippy with -D warnings so CI still enforces.
+#   unwrap_used/expect_used/panic  deny  — zero-panic invariant (arch doc §2.1).
+#   indexing_slicing  warn  — prefers .get(); too noisy as deny during Phase B.
+#   cast_lossless     warn  — catches silent u8→u32 widenings.
+#   missing_errors_doc/missing_panics_doc  warn  — doc hygiene without blocking.
+[workspace.lints.rust]
+unsafe_code = "deny"
+
+[workspace.lints.clippy]
+# Lint groups get `priority = -1` so individual lints below can raise or
+# lower them without triggering Cargo's `lint_groups_priority` error.
+all      = { level = "deny", priority = -1 }
+pedantic = { level = "warn", priority = -1 }
+
+unwrap_used        = "deny"
+expect_used        = "deny"
+panic              = "deny"
+indexing_slicing   = "warn"
+cast_lossless      = "warn"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"

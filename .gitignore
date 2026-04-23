@@ -12,6 +12,10 @@ target/
 .cargo/registry/
 .cargo/git/
 
+# Nested-workspace fixture (Phase 01 lint probe) — its own Cargo.lock is
+# ephemeral; the probe is only built to verify it FAILS under workspace lints.
+rust/_lint_probe/Cargo.lock
+
 # ─── C / CMake ────────────────────────────────────────────────────────────────
 build/
 *.o

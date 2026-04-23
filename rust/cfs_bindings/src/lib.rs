@@ -1,5 +1,7 @@
-#![deny(clippy::all)]
-// Allow bindgen-generated names that don't follow Rust conventions
+// Allow bindgen-generated names that don't follow Rust conventions.
+// `clippy::all` is now denied at the workspace level (see /Cargo.toml
+// [workspace.lints.clippy]), so the old crate-level `#![deny(clippy::all)]`
+// is dropped as redundant.
 #![allow(non_upper_case_globals, non_camel_case_types, non_snake_case)]
 
 //! Safe Rust wrappers around compile-time constants from `_defs/mission_config.h`.
@@ -28,18 +30,27 @@ mod tests {
 
     #[test]
     fn test_max_pipes_is_nonzero() {
-        assert!(mission::MAX_PIPES > 0, "mission must allow at least one pipe");
+        assert!(
+            mission::MAX_PIPES > 0,
+            "mission must allow at least one pipe"
+        );
     }
 
     #[test]
     fn test_task_stack_is_power_of_two() {
         let stack = mission::TASK_STACK_BYTES;
-        assert!(stack.is_power_of_two(), "stack size should be a power of two for alignment");
+        assert!(
+            stack.is_power_of_two(),
+            "stack size should be a power of two for alignment"
+        );
     }
 
     #[test]
     fn test_spacecraft_id_is_in_valid_apid_range() {
         /* CCSDS APIDs are 11-bit values (0–2047) */
-        assert!(mission::SPACECRAFT_ID <= 2047, "spacecraft ID must fit in 11-bit APID field");
+        assert!(
+            mission::SPACECRAFT_ID <= 2047,
+            "spacecraft ID must fit in 11-bit APID field"
+        );
     }
 }
