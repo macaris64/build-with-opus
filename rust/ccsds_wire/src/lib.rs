@@ -4,7 +4,10 @@
 //! the first public item: the sealed [`Apid`] newtype (arch §2.2). Phase 04
 //! extends the sealed-newtype pattern to `SequenceCount`, `PacketDataLength`,
 //! `FuncCode`, `InstanceId`. Phase 05 adds the unified [`CcsdsError`] enum
-//! (arch §2.8) and the [`PacketType`] discriminant (arch §2.4).
+//! (arch §2.8) and the [`PacketType`] discriminant (arch §2.4). Phase 06
+//! adds the [`Cuc`] 7-byte BE time codec with fleet-pinned P-Field `0x2F`
+//! (arch §2.3). Phase 07 adds the 6-byte [`PrimaryHeader`] BE codec (arch
+//! §2.4).
 
 // `forbid(unsafe_code)` escalates above the workspace `deny(unsafe_code)`
 // so no child scope can re-enable unsafe via `#[allow]` — this is the BE
@@ -22,10 +25,12 @@ pub mod apid;
 pub mod cuc;
 pub mod error;
 pub mod packet_type;
+pub mod primary;
 pub mod primitives;
 
 pub use apid::Apid;
 pub use cuc::{Cuc, P_FIELD};
 pub use error::CcsdsError;
 pub use packet_type::PacketType;
+pub use primary::PrimaryHeader;
 pub use primitives::{FuncCode, InstanceId, PacketDataLength, SequenceCount};
