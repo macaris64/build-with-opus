@@ -180,7 +180,7 @@ A milestone phase is `[ TEST ]`-badged (§4.2) and produces a **hard deliverable
 | `[x]` 24 | 🟢 FEAT | `SppDecoder` with backpressure events | `feat/phase-24-spp-decoder` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[x]` 25 | 🔴 CRIT | `ApidRouter` + fault-APID rejection | `feat/phase-25-apid-router` | `claude-opus-4-7` | H | 100 % ✅ |
 | `[x]` 26 | 🟢 FEAT | `CfdpProvider` trait + `Class1Receiver` | `feat/phase-26-cfdp-class1` | `claude-sonnet-4-6` | H | 100 % ✅ |
-| `[ ]` 27 | 🟢 FEAT | `MFileAssembler` out-of-order reassembly | `feat/phase-27-mfile-assembler` | `claude-sonnet-4-6` | M | 100 % ✅ |
+| `[x]` 27 | 🟢 FEAT | `MFileAssembler` out-of-order reassembly | `feat/phase-27-mfile-assembler` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[ ]` 28 | 🟢 FEAT | TC uplink pipeline (TcBuilder + Cop1 + TcFramer) | `feat/phase-28-tc-uplink` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[ ]` 29 | 🟢 FEAT | Operator-UI backend surfaces (WS + REST) | `feat/phase-29-ui-backend` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[ ]` 30 | 🧪 TEST | **MILESTONE 3/5 — `ground_station v0.1` (Phase C Step 2 gate)** | `feat/phase-30-ground-station-milestone` | `claude-sonnet-4-6` | H | ≥ 85 % / ≥ 70 % |
