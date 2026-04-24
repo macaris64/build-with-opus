@@ -1,5 +1,8 @@
 //! Telecommand uplink pipeline (docs/architecture/06-ground-segment-rust.md §6).
 //!
+//! Three-stage pipeline:
+//! `TcBuilder` (catalog validation) → `Cop1Engine` (FOP-1) → `TcFramer` (SDLP).
+//!
 //! Four-stage pipeline from operator intent to a physical TC frame on the wire:
 //!
 //! ```text
@@ -48,3 +51,11 @@ pub const COP1_STALE_WARN_MULT: u32 = 3;
 
 /// CLCW-stale threshold multiplier over T1 before entering `RETRANSMIT_WITH_WAIT`.
 pub const COP1_STALE_ABORT_MULT: u32 = 10;
+
+pub mod builder;
+pub mod cop1;
+pub mod framer;
+
+pub use builder::{BuilderError, TcBuilder, TcIntent};
+pub use cop1::{Cop1Engine, Cop1Error, Fop1State, TcFrame, TcFrameType};
+pub use framer::{FramerError, TcFramer};
