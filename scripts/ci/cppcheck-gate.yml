@@ -1,0 +1,14 @@
+# MISRA cppcheck gate — CI stub.
+# Wired into the full GitHub Actions workflow in Phase 49.
+# Run locally with: act -j cppcheck
+name: MISRA cppcheck gate
+on: [push, pull_request]
+jobs:
+  cppcheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install cppcheck
+        run: sudo apt-get update -q && sudo apt-get install -y cppcheck
+      - name: Run MISRA baseline gate
+        run: bash scripts/cppcheck-gate.sh
