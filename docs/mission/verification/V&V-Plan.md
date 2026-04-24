@@ -49,7 +49,7 @@ Component-level tests inside a single stack. No inter-stack communication, no si
 
 Commands (from [CLAUDE.md](../../../CLAUDE.md), not restated here): `ctest --test-dir build --output-on-failure`, `colcon test`, `cargo test`, `cargo tarpaulin --out Html`.
 
-**Gate**: every `apps/<app>/` directory has a `fsw/unit-test/` directory with at least one failure-path test per [.claude/rules/testing.md](../../../.claude/rules/testing.md:26). Same discipline for `ros2_ws/**/test/` and `rust/*/tests/`. Target: **100 % branch coverage** on C and Rust per [CLAUDE.md §Coding Standards](../../../CLAUDE.md); exceptions recorded in [`deviations.md`](../../standards/deviations.md).
+**Gate**: every `apps/<app>/` directory has a `fsw/unit-test/` directory with at least one failure-path test per [.claude/rules/testing.md](../../../.claude/rules/testing.md). Same discipline for `ros2_ws/**/test/` and `rust/*/tests/`. Target: **100 % branch coverage** on C and Rust per [CLAUDE.md §Coding Standards](../../../CLAUDE.md); exceptions recorded in [`deviations.md`](../../standards/deviations.md).
 
 ### 2.2 Integration
 
@@ -59,7 +59,7 @@ Multi-stack, single-process-tree tests. A cFS app talking to a simulated peer vi
 |---|---|---|
 | cFS app ↔ cFS app via SB | Linux host | CMocka + cFE test doubles |
 | ROS 2 node ↔ ROS 2 node | `colcon test` with launch_testing | launch_testing + pytest |
-| `ccsds_wire` ↔ `cfs_bindings` | Rust `tests/` | Fuzz via `proptest` per [.claude/rules/testing.md](../../../.claude/rules/testing.md:23) |
+| `ccsds_wire` ↔ `cfs_bindings` | Rust `tests/` | Fuzz via `proptest` per [.claude/rules/testing.md](../../../.claude/rules/testing.md) |
 | `sim_adapter` APID validation ↔ `fault_injector` output | Linux host | CMocka with recorded `0x540`–`0x543` bytes |
 
 **Gate**: every ICD under [`../../interfaces/`](../../interfaces/) has at least one integration test that exercises its contract end-to-end without real network transport. Missing coverage is tracked in §10.
@@ -150,7 +150,7 @@ All targets come from [CLAUDE.md](../../../CLAUDE.md); this section binds them t
 | Stack | Tool | Target | Enforcement |
 |---|---|---|---|
 | cFS / C | `ctest` + `gcov` | **100 % branch coverage** per [CLAUDE.md §C / FSW](../../../CLAUDE.md) + [.claude/rules/testing.md](../../../.claude/rules/testing.md) | Unit gate |
-| Rust | `cargo tarpaulin --out Html` | **100 % branch coverage** target per [.claude/rules/testing.md](../../../.claude/rules/testing.md:22); Linux x86_64 only | Unit gate |
+| Rust | `cargo tarpaulin --out Html` | **100 % branch coverage** target per [.claude/rules/testing.md](../../../.claude/rules/testing.md); Linux x86_64 only | Unit gate |
 | ROS 2 / C++ | `colcon test` | coverage target deferred to Phase C | Informational |
 | Gazebo plugins | gtest via plugin unit tests | "loads without crash" minimum per [05 §7](../../architecture/05-simulation-gazebo.md) | Informational |
 
@@ -163,7 +163,7 @@ Every PR passes:
 | `cppcheck --enable=all --std=c17 apps/` | cFS FSW | **Zero new findings** per [.claude/rules/security.md](../../../.claude/rules/security.md) |
 | `cargo clippy -- -D warnings` | All Rust crates | **Zero warnings**, no suppressions without justification comment |
 | `cargo audit` | All Rust crates | **Zero HIGH or CRITICAL** advisories per [.claude/rules/security.md](../../../.claude/rules/security.md) |
-| MISRA deviation scan | `apps/**` | Every deviation has an inline `/* MISRA C:2012 Rule X.Y deviation: ... */` comment per [.claude/rules/general.md](../../../.claude/rules/general.md:12) |
+| MISRA deviation scan | `apps/**` | Every deviation has an inline `/* MISRA C:2012 Rule X.Y deviation: ... */` comment per [.claude/rules/general.md](../../../.claude/rules/general.md) |
 
 ### 5.3 Scenario gates
 

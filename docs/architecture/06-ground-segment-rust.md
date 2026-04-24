@@ -67,7 +67,7 @@ Ferrocene cross-target selection (`[target.<triple>]` blocks) is **out of scope*
 
 ### 1.6 Migration of existing `ground_station::telemetry`
 
-The existing BE-only CCSDS primary-header parser in [`rust/ground_station/src/telemetry.rs`](../../rust/ground_station/src/telemetry.rs) is the functional seed for `ccsds_wire::primary_header`: the scaffolding PR MUST move that type, its error enum, and its unit tests into `ccsds_wire`, and replace the direct consumer with `use ccsds_wire::PrimaryHeader`. After the migration, `ground_station/src/telemetry.rs` is either removed or reduced to a thin shim re-exporting `ccsds_wire` types. No BE parsing logic remains outside `ccsds_wire` + `cfs_bindings` on the Rust side — per [Q-C8](../standards/decisions-log.md).
+The BE-only CCSDS primary-header parser originally in `rust/ground_station/src/telemetry.rs` was migrated into `ccsds_wire::primary_header` (completed in Phase 15). The consumer now uses `ccsds_wire::PrimaryHeader` directly, and `telemetry.rs` was removed. No BE parsing logic remains outside `ccsds_wire` + `cfs_bindings` on the Rust side — per [Q-C8](../standards/decisions-log.md).
 
 ## 2. `ccsds_wire` API
 

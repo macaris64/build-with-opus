@@ -15,30 +15,30 @@ flowchart LR
     subgraph Gazebo["Gazebo Harmonic process"]
         World["Mars world SDF"]
         subgraph Plugins
-            RovDrive[rover_drive_plugin<br/>(C++ ModelPlugin)]
+            RovDrive["rover_drive_plugin (C++ ModelPlugin)"]
             RovSens[rover_sensors_plugin]
             UAVSens[uav_flight_plugin]
             CryoSens[cryobot_physics_plugin]
         end
-        Inject[fault_injector<br/>sideband emitter]
-        EchoBack[fsw_echo_sink<br/>0x570-0x57F]
+        Inject["fault_injector / sideband emitter"]
+        EchoBack["fsw_echo_sink 0x570-0x57F"]
     end
 
     subgraph Clock["clock_link_model (separate container)"]
         CK[TAI authority]
-        LM[link-effect<br/>drop/delay]
+        LM["link-effect drop/delay"]
     end
 
     subgraph FSW["FSW / ROS 2 consumers"]
-        OrbFSW[cFS orbiter<br/>sim_adapter app]
-        Rovers[ROS 2 rovers<br/>ICD-sim-fsw: sensors]
+        OrbFSW["cFS orbiter sim_adapter app"]
+        Rovers["ROS 2 rovers ICD-sim-fsw sensors"]
     end
 
     World --> Plugins
-    Plugins -. "sensor topics<br/>(ROS 2)" .-> Rovers
-    Inject -. "0x540-0x543 SPP<br/>ICD-sim-fsw" .-> OrbFSW
-    Inject -. "0x500-0x53F<br/>sensor inject" .-> OrbFSW
-    OrbFSW -. "0x570-0x57F<br/>state echo" .-> EchoBack
+    Plugins -. "sensor topics ROS 2" .-> Rovers
+    Inject -. "0x540-0x543 SPP ICD-sim-fsw" .-> OrbFSW
+    Inject -. "0x500-0x53F sensor inject" .-> OrbFSW
+    OrbFSW -. "0x570-0x57F state echo" .-> EchoBack
     CK --> OrbFSW
     CK --> Rovers
     CK --> Plugins

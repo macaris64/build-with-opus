@@ -52,6 +52,7 @@ Single source of truth for compile-time mission parameters. Every doc that cites
 |---|---|---|
 | [`_defs/mission_config.h`](../_defs/mission_config.h) | `MISSION_NAME`, `SPACECRAFT_ID`, `SAKURA_II_SCID_BASE`, `SAKURA_II_MAX_PIPES`, `SAKURA_II_TASK_STACK` | [`interfaces/apid-registry.md`](interfaces/apid-registry.md) — SCID must match |
 | [`_defs/targets.cmake`](../_defs/targets.cmake) | `MISSION_NAME`, `MISSION_APPS` app list | [`architecture/01-orbiter-cfs.md`](architecture/01-orbiter-cfs.md) (planned) — app inventory must match |
+| [`_defs/cfs_app_template.cmake`](../_defs/cfs_app_template.cmake) | `sakura_add_cfs_app()` macro — per-app FSW OBJECT library, CMocka test target, gcov instrumentation (`SAKURA_COVERAGE`), per-app cppcheck target | Phase 17; every `apps/<name>/CMakeLists.txt` invokes this macro |
 
 `MISSION_NAME` was renamed from the template placeholder `SAMPLE_MISSION` to `SAKURA_II` in Phase 11, alongside the `SAKURA_II_SCID_BASE` fleet-allocation anchor; the original SCID value `42U` was retained. Historical note preserved here for changelog-style traceability.
 
