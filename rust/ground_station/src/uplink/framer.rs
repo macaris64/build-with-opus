@@ -227,8 +227,8 @@ mod tests {
         let bytes = framer().frame(&tc).unwrap();
         // SCID = 42 = 0x02A → bits [9:8] = 0 (in byte 0 bits [1:0]);
         //                      bits [7:0] = 0x2A (in byte 1).
-        let scid_hi = (bytes[0] & 0x03) as u16;
-        let scid_lo = bytes[1] as u16;
+        let scid_hi = u16::from(bytes[0] & 0x03);
+        let scid_lo = u16::from(bytes[1]);
         let scid = (scid_hi << 8) | scid_lo;
         assert_eq!(scid, 42);
     }
@@ -241,10 +241,11 @@ mod tests {
         let tc = ad_frame(payload, 0);
         let bytes = framer().frame(&tc).unwrap();
         let total = bytes.len(); // 5 + 20 + 2 = 27
+        #[allow(clippy::cast_possible_truncation)] // total ≤ 27 here; cast is safe
         let frame_len_m1 = (total - 1) as u16; // 26
 
-        let encoded_hi = (bytes[2] & 0x03) as u16;
-        let encoded_lo = bytes[3] as u16;
+        let encoded_hi = u16::from(bytes[2] & 0x03);
+        let encoded_lo = u16::from(bytes[3]);
         let encoded = (encoded_hi << 8) | encoded_lo;
         assert_eq!(encoded, frame_len_m1);
     }
