@@ -45,6 +45,11 @@ fn build_tc(apid_raw: u16) -> Vec<u8> {
 
 /// Round-trip a TM MID constant: bytes → Message → bytes → SpacePacket.
 /// Asserts byte equality and correct APID / PacketType.
+///
+/// APID extraction uses the cFE v1 mask `MID & 0x07FF` per
+/// `docs/interfaces/apid-registry.md §cFE Message ID (MID) Scheme`.
+/// If the MID scheme changes at cFS v7+, update this mask here and in
+/// `assert_tc_roundtrip` in lockstep with the registry.
 fn assert_tm_roundtrip(mid_constant: u32) {
     let apid_raw = (mid_constant & 0x07FF) as u16;
     let orig = build_tm(apid_raw);
@@ -73,6 +78,8 @@ fn assert_tm_roundtrip(mid_constant: u32) {
 
 /// Round-trip a TC MID constant: bytes → Message → bytes → SpacePacket.
 /// Asserts byte equality and correct APID / PacketType.
+///
+/// See `assert_tm_roundtrip` for the MID-scheme note about the 0x07FF mask.
 fn assert_tc_roundtrip(mid_constant: u32) {
     let apid_raw = (mid_constant & 0x07FF) as u16;
     let orig = build_tc(apid_raw);
@@ -321,4 +328,23 @@ fn test_roundtrip_rover_uav_cmd() {
 #[test]
 fn test_roundtrip_rover_cryobot_cmd() {
     assert_tc_roundtrip(ROVER_CRYOBOT_CMD_MID);
+}
+
+// ------------------------------------------------------------------
+// Failure-path tests — per testing.md: every test file must contain
+// at least one error/failure-path test.
+// ------------------------------------------------------------------
+
+/// G: a buffer of 8 bytes is passed to to_c_message (header requires 16).
+/// W: to_c_message is called with a MID-associated APID byte count below HEADER_LEN.
+/// T: Err(CcsdsError::BufferTooShort { need: 16, got: 8 }) is returned —
+///    no panic, no partial parse.
+#[test]
+fn test_to_c_message_rejects_buffer_shorter_than_header() {
+    use ccsds_wire::CcsdsError;
+    let err = cfs_bindings::convert::to_c_message(&[0u8; 8]).unwrap_err();
+    assert!(
+        matches!(err, CcsdsError::BufferTooShort { need: 16, got: 8 }),
+        "expected BufferTooShort {{need:16, got:8}}, got {err:?}"
+    );
 }
