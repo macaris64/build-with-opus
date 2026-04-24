@@ -328,7 +328,11 @@ impl AosFramer {
         // ── 6. Forward frame downstream ───────────────────────────────────────
         // try_send is non-blocking: channel-full → silent discard per §5.3.
         // Phase 23 will add the labeled `aos_ingest_dropped_total` counter.
-        let frame = super::AosFrame { vc_id, ocf, data_field };
+        let frame = super::AosFrame {
+            vc_id,
+            ocf,
+            data_field,
+        };
         if self.frame_tx.try_send(frame).is_err() {
             // Backpressure drop — labeled counter lands in Phase 23.
         }
@@ -495,8 +499,15 @@ mod tests {
         // First bad frame: event emitted (last_fecf_event = None → emit branch).
         feed_bad_fecf(&mut framer).await;
         assert_eq!(framer.fecf_errors_total(), 1);
-        assert!(frame_rx.try_recv().is_err(), "corrupt frame must not be forwarded");
-        assert_eq!(*clcw_rx.borrow(), None, "CLCW must not be updated on bad frame");
+        assert!(
+            frame_rx.try_recv().is_err(),
+            "corrupt frame must not be forwarded"
+        );
+        assert_eq!(
+            *clcw_rx.borrow(),
+            None,
+            "CLCW must not be updated on bad frame"
+        );
 
         // Second bad frame within 1 s: event suppressed (elapsed < interval branch).
         tokio::time::advance(Duration::from_millis(500)).await;
@@ -529,7 +540,11 @@ mod tests {
         assert_eq!(f.ocf, None);
         assert_eq!(f.data_field.len(), 1016);
         assert_eq!(framer.fecf_errors_total(), 0);
-        assert_eq!(*clcw_rx.borrow(), None, "watch must not be updated when OCF absent");
+        assert_eq!(
+            *clcw_rx.borrow(),
+            None,
+            "watch must not be updated when OCF absent"
+        );
     }
 
     // ── Test 4: link-state transitions (Aos / Degraded / Los) ───────────────
@@ -545,7 +560,11 @@ mod tests {
         let (clcw_tx, _clcw_rx) = watch::channel(None);
         let mut framer = AosFramer::new(frame_tx, clcw_tx);
 
-        assert_eq!(framer.link_state(), LinkState::Los, "initial state must be Los");
+        assert_eq!(
+            framer.link_state(),
+            LinkState::Los,
+            "initial state must be Los"
+        );
 
         // ── Phase 1: Los → Aos ──────────────────────────────────────────────
         // t=0 s: feed frame; aos_condition_since = Some(t=0).
@@ -559,7 +578,11 @@ mod tests {
         // t=6 s: duration since condition = 6 s ≥ 5 s → Aos.
         tokio::time::advance(Duration::from_secs(4)).await;
         feed_frame(&mut framer, &build_frame(63, None)).await;
-        assert_eq!(framer.link_state(), LinkState::Aos, "must reach Aos after 5 s sustain");
+        assert_eq!(
+            framer.link_state(),
+            LinkState::Aos,
+            "must reach Aos after 5 s sustain"
+        );
 
         // ── Phase 2: Aos → Degraded ─────────────────────────────────────────
         // 1 bad frame: 1 error / (3 valid + 1 error) = 25 % > 10 % → Degraded.

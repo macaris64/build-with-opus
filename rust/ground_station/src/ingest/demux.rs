@@ -196,7 +196,10 @@ mod tests {
 
         demux.run(frame_rx).await;
 
-        assert!(rx.try_recv().is_err(), "VC 0 should not receive a VC 5 frame");
+        assert!(
+            rx.try_recv().is_err(),
+            "VC 0 should not receive a VC 5 frame"
+        );
         assert_eq!(demux.unknown_vc_total(), 1);
         assert_eq!(demux.dropped_total(), 0);
     }
@@ -259,9 +262,14 @@ mod tests {
 
         for vc_id in [0u8, 1, 2, 3] {
             let rx = receivers.get_mut(&vc_id).unwrap();
-            let frame = rx.try_recv().unwrap_or_else(|_| panic!("VC {vc_id} missing frame"));
+            let frame = rx
+                .try_recv()
+                .unwrap_or_else(|_| panic!("VC {vc_id} missing frame"));
             assert_eq!(frame.vc_id, vc_id);
-            assert!(rx.try_recv().is_err(), "VC {vc_id} should have exactly one frame");
+            assert!(
+                rx.try_recv().is_err(),
+                "VC {vc_id} should have exactly one frame"
+            );
         }
         assert_eq!(demux.dropped_total(), 0);
         assert_eq!(demux.unknown_vc_total(), 0);
