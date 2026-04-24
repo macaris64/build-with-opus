@@ -119,5 +119,5 @@ The orbiter-to-relay cross-link and the relay-to-surface Proximity-1 link use th
 ## Change Control
 
 - Any new APID or MID allocation requires a PR that (a) updates this file, (b) updates the corresponding packet-catalog entry, and (c) adds the MID macro in source — in that order.
-- The APID/MID consistency linter (planned for Phase B; see [the plan](../../.claude/plans/in-this-project-i-hazy-kahan.md)) enforces that every MID macro under `apps/**` has a registry entry and that `SPACECRAFT_ID` here matches `_defs/mission_config.h`.
+- The APID/MID consistency linter (shipped as `apid-mid-lint` CI job) enforces that every MID macro under `apps/**` has a registry entry and that `SPACECRAFT_ID` here matches `_defs/mission_config.h`.
 - CCSDS reserved ranges (`0x000`, `0x001`–`0x0FF`, `0x7FF`) are immutable; allocating into them is a deviation that must be recorded in [`../standards/deviations.md`](../standards/deviations.md).

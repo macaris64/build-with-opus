@@ -121,5 +121,5 @@ Per-asset-class detail will live in each asset's architecture doc. At the missio
 ## 8. Open Items (non-blocking for Phase B)
 
 - Fleet-scaling concept-of-operations when >1 orbiter is above the horizon at the same surface asset (relay selection policy). Will land in `mission-phases.md` before Phase B closes.
-- Exact light-time and drift-model constants — see [open questions in the plan](../../../.claude/plans/in-this-project-i-hazy-kahan.md).
+- Exact light-time and drift-model constants — tracked as open items for Phase C.
 - CFDP Class 2 upgrade path — ConOps-level impact only: operator will see delivery-acknowledged indicators; no net new scenarios at this layer.

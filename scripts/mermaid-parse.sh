@@ -39,8 +39,9 @@ while IFS= read -r -d '' md_file; do
                 block_idx=$(( block_idx + 1 ))
                 blocks_found=$(( blocks_found + 1 ))
                 tmpfile="$TMPDIR_ROOT/block_${blocks_found}.mmd"
+                outfile="$TMPDIR_ROOT/block_${blocks_found}.svg"
                 printf '%s\n' "$block_content" > "$tmpfile"
-                if ! mmdc -i "$tmpfile" -o /dev/null 2>/dev/null; then
+                if ! mmdc -i "$tmpfile" -o "$outfile" 2>/dev/null; then
                     rel="${md_file#./}"
                     echo "mermaid-parse: FAIL: $rel block $block_idx" >&2
                     failures=$(( failures + 1 ))
