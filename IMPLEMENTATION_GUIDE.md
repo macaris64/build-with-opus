@@ -163,16 +163,16 @@ A milestone phase is `[ TEST ]`-badged (§4.2) and produces a **hard deliverable
 | `[✅]` 07 | 🔴 CRIT | `PrimaryHeader` encode / decode | `feat/phase-07-primary-header` | `claude-opus-4-7` | H | 100 % ✅ |
 | `[✅]` 08 | 🔴 CRIT | `SecondaryHeader` + `time_suspect` | `feat/phase-08-secondary-header` | `claude-opus-4-7` | H | 100 % ✅ |
 | `[✅]` 09 | 🟢 FEAT | `SpacePacket<'a>` + `PacketBuilder` | `feat/phase-09-space-packet` | `claude-sonnet-4-6` | M | 100 % ✅ |
-| `[x]` 10 | 🧪 TEST | **MILESTONE 1/5 — `ccsds_wire v1.0`** | `feat/phase-10-ccsds-wire-milestone` | `claude-sonnet-4-6` | H | 100 % ✅ |
+| `[✅]` 10 | 🧪 TEST | **MILESTONE 1/5 — `ccsds_wire v1.0`** | `feat/phase-10-ccsds-wire-milestone` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[✅]` 11 | 🔵 ARCH | Rename SAMPLE_MISSION → SAKURA_II + SCID hook | `feat/phase-11-mission-rename` | `claude-opus-4-7` | L | 100 % ✅ |
 | `[✅]` 12 | 🟢 FEAT | `cfs_bindings` safe wrappers (CFE_MSG / CFE_SB) | `feat/phase-12-cfs-msg-wrappers` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[✅]` 13 | 🟢 FEAT | `_defs/mids.h` + `cfs_bindings::mids` | `feat/phase-13-mid-macros` | `claude-sonnet-4-6` | L | 100 % ✅ |
 | `[✅]` 14 | 🟢 FEAT | FFI host ↔ `ccsds_wire` conversion helpers | `feat/phase-14-ffi-conversion` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[✅]` 15 | 🔴 CRIT | Migrate `ground_station::telemetry` → `ccsds_wire` | `feat/phase-15-telemetry-migration` | `claude-opus-4-7` | M | 100 % ✅ |
-| `[x]` 16 | 🧪 TEST | cfs_bindings round-trip test suite | `feat/phase-16-bindings-roundtrip-tests` | `claude-sonnet-4-6` | L | 100 % ✅ |
-| `[x]` 17 | 🔵 ARCH | cFS app template CMake macro | `feat/phase-17-cfs-app-template` | `claude-opus-4-7` | M | 100 % ✅ |
-| `[x]` 18 | 🟡 LCC | MISRA C:2012 cppcheck baseline + CI hook | `feat/phase-18-misra-baseline` | `claude-sonnet-4-6` | L | n/a (gate) |
-| `[x]` 19 | 🟡 LCC | CMocka template + branch-coverage gate | `feat/phase-19-cmocka-template` | `claude-sonnet-4-6` | L | 100 % ✅ |
+| `[✅]` 16 | 🧪 TEST | cfs_bindings round-trip test suite | `feat/phase-16-bindings-roundtrip-tests` | `claude-sonnet-4-6` | L | 100 % ✅ |
+| `[✅]` 17 | 🔵 ARCH | cFS app template CMake macro | `feat/phase-17-cfs-app-template` | `claude-opus-4-7` | M | 100 % ✅ |
+| `[✅]` 18 | 🟡 LCC | MISRA C:2012 cppcheck baseline + CI hook | `feat/phase-18-misra-baseline` | `claude-sonnet-4-6` | L | n/a (gate) |
+| `[✅]` 19 | 🟡 LCC | CMocka template + branch-coverage gate | `feat/phase-19-cmocka-template` | `claude-sonnet-4-6` | L | 100 % ✅ |
 | `[ ]` 20 | 🧪 TEST | **MILESTONE 2/5 — `cfs_bindings v1.0` + cFS template** | `feat/phase-20-bindings-milestone` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[ ]` 21 | 🔵 ARCH | `ground_station::{ingest,uplink,cfdp,mfile,ui}` scaffold | `feat/phase-21-ground-station-scaffold` | `claude-opus-4-7` | M | 100 % ✅ |
 | `[ ]` 22 | 🟢 FEAT | `AosFramer` (1024 B, FECF CRC-16, OCF) | `feat/phase-22-aos-framer` | `claude-sonnet-4-6` | H | 100 % ✅ |
