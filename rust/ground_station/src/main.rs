@@ -1,29 +1,49 @@
 use anyhow::Result;
-use ccsds_wire::PrimaryHeader;
+use ground_station::ingest;
 use log::info;
-use std::io::{self, Read};
 
-fn main() -> Result<()> {
+/// Ground station entry point.
+///
+/// Starts the tokio async runtime and wires the ingest pipeline channels.
+/// Pipeline tasks (`AosFramer`, `VcDemux`, `SppDecoder`, `ApidRouter`, Sinks) are
+/// spawned in Phase 22+. The uplink, CFDP, M-File, and UI workers follow in
+/// Phases 23–29.
+///
+/// # Errors
+///
+/// Returns an error if the tokio runtime cannot be initialised or if any
+/// mandatory startup I/O fails.
+#[tokio::main]
+async fn main() -> Result<()> {
     env_logger::init();
 
-    info!("Ground station starting — reading telemetry from stdin");
+    // CLI: first positional arg is the ground station listen address.
+    let listen_addr = std::env::args()
+        .nth(1)
+        .unwrap_or_else(|| "127.0.0.1:10000".to_owned());
 
-    let mut raw = Vec::new();
-    io::stdin().read_to_end(&mut raw)?;
+    info!("Ground station starting — listening on {listen_addr}");
 
-    match PrimaryHeader::decode(&raw) {
-        Ok(hdr) => {
-            info!(
-                "Received telemetry: apid={} seq={} len={}",
-                hdr.apid().get(),
-                hdr.sequence_count().get(),
-                hdr.data_length().get(),
-            );
-        }
-        Err(e) => {
-            log::error!("Telemetry parse error: {e}");
-        }
-    }
+    // Stub pipeline wiring (Phase 21 scaffold).
+    // Channel pairs are declared with architecture-specified capacities (§5.3)
+    // but are not yet connected to tasks. Spawn logic lands in Phase 22+.
+    let (_aos_tx, _aos_rx) =
+        tokio::sync::mpsc::channel::<Vec<u8>>(ingest::AOS_TO_DEMUX_CAP);
+    let (_demux_tx, _demux_rx) =
+        tokio::sync::mpsc::channel::<Vec<u8>>(ingest::DEMUX_TO_SPP_CAP);
+    let (_spp_tx, _spp_rx) =
+        tokio::sync::mpsc::channel::<Vec<u8>>(ingest::SPP_TO_ROUTER_CAP);
+    let (_hk_tx, _hk_rx) =
+        tokio::sync::mpsc::channel::<Vec<u8>>(ingest::ROUTER_TO_HK_CAP);
+    let (_event_tx, _event_rx) =
+        tokio::sync::mpsc::channel::<Vec<u8>>(ingest::ROUTER_TO_EVENT_CAP);
+    let (_cfdp_tx, _cfdp_rx) =
+        tokio::sync::mpsc::channel::<Vec<u8>>(ingest::ROUTER_TO_CFDP_CAP);
+    let (_rover_tx, _rover_rx) =
+        tokio::sync::mpsc::channel::<Vec<u8>>(ingest::ROUTER_TO_ROVER_CAP);
+
+    // Yield once so the runtime is exercised before pipeline tasks land (Phase 22+).
+    tokio::task::yield_now().await;
 
     Ok(())
 }
