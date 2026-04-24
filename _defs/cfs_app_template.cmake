@@ -87,7 +87,7 @@ function(sakura_add_cfs_app app_name)
         add_custom_target(${app_name}_cppcheck
             COMMAND ${SAKURA_CPPCHECK_EXECUTABLE}
                 --enable=all
-                --std=c17
+                --std=c11
                 --error-exitcode=1
                 --inline-suppr
                 --suppress=missingIncludeSystem

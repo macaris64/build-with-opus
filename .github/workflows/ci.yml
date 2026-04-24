@@ -219,7 +219,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends cppcheck
 
       - name: Run cppcheck
-        run: cppcheck --enable=all --std=c17 --error-exitcode=1 apps/
+        run: cppcheck --enable=all --std=c11 --error-exitcode=1 apps/
 
   # ──────────────────────────────────────────────────────────────────────────
   # 2.5  traceability-lint — SYS-REQ-0080
