@@ -63,6 +63,9 @@ pub const ROUTER_TO_ROVER_CAP: usize = 256;
 pub mod decoder;
 pub mod demux;
 pub mod framer;
+pub mod router;
+
+pub use router::{ApidRouter, RejectReason, Route};
 
 // ---------------------------------------------------------------------------
 // Inter-stage frame / packet carrier types.
@@ -81,25 +84,4 @@ pub struct AosFrame {
     pub ocf: Option<[u8; 4]>,
     /// Data field bytes: 1012 B when OCF present, 1016 B when absent.
     pub data_field: bytes::Bytes,
-}
-
-/// Routing decision produced by [`ApidRouter`] for each decoded space packet.
-///
-/// Routing table lives in §5.4; fault-injection APID rejection in §8.2 / Q-F2.
-pub enum Route {
-    /// Housekeeping telemetry — forwarded to the HK ring-buffer sink.
-    Hk,
-    /// Event record — appended to the persistent event log.
-    EventLog,
-    /// CFDP protocol data unit — forwarded to [`crate::cfdp::Class1Receiver`].
-    CfdpPdu,
-    /// Rover telemetry — re-serialised and stored in the rover-forward archive.
-    RoverForward,
-    /// Idle fill — discarded silently.
-    IdleFill,
-    /// Rejected packet (includes forbidden APIDs `0x540`–`0x543` per Q-F2).
-    Rejected {
-        /// Raw APID value that triggered rejection.
-        apid: u16,
-    },
 }
