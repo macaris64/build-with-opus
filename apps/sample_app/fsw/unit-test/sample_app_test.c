@@ -16,6 +16,10 @@
 
 #include "sample_app.h"
 
+/* Named constant for an unknown command code used in failure-path tests.
+ * Must not match any valid SAMPLE_APP_*_CC value. */
+#define SAMPLE_APP_INVALID_CC  ((CFE_MSG_FcnCode_t)0xFFU)
+
 /* ---------------------------------------------------------------------------
  * CFE stub implementations (compiled only under UNIT_TEST)
  * In a real cFS unit-test framework these live in a shared stub library.
@@ -186,7 +190,7 @@ static void test_invalid_command_increments_counter(void **state)
     will_return(CFE_SB_ReceiveBuffer,  (uintptr_t)&buf);
     will_return(CFE_SB_ReceiveBuffer,  CFE_SUCCESS);
     will_return(CFE_MSG_GetMsgId,      SAMPLE_APP_CMD_MID);
-    will_return(CFE_MSG_GetFcnCode,    0xFFU); /* unknown command code */
+    will_return(CFE_MSG_GetFcnCode,    SAMPLE_APP_INVALID_CC);
 
     will_return(CFE_ES_RunLoop, false);
 
@@ -273,7 +277,9 @@ static void test_sb_receive_error_increments_err_counter(void **state)
     will_return(CFE_SB_Subscribe,   CFE_SUCCESS);
     will_return(CFE_SB_Subscribe,   CFE_SUCCESS);
 
-    /* One loop pass: ReceiveBuffer returns an error */
+    /* One loop pass: ReceiveBuffer returns an error.
+     * NULL BufPtr is intentional: the error path in sample_app.c never
+     * dereferences SBBufPtr when status != CFE_SUCCESS (line 46 guards it). */
     will_return(CFE_ES_RunLoop,       true);
     will_return(CFE_SB_ReceiveBuffer, (uintptr_t)NULL);
     will_return(CFE_SB_ReceiveBuffer, CFE_SB_PIPE_RD_ERR);
@@ -304,7 +310,7 @@ static void test_unknown_msgid_increments_err_counter(void **state)
     will_return(CFE_ES_RunLoop,       true);
     will_return(CFE_SB_ReceiveBuffer, (uintptr_t)&buf);
     will_return(CFE_SB_ReceiveBuffer, CFE_SUCCESS);
-    will_return(CFE_MSG_GetMsgId,     0xFFFFU); /* unknown MsgId */
+    will_return(CFE_MSG_GetMsgId,     CFE_SB_INVALID_MSG_ID);
 
     will_return(CFE_ES_RunLoop, false);
 

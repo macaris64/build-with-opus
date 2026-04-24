@@ -75,9 +75,11 @@ for app in ${APP_LIST}; do
         continue
     fi
 
-    # Locate the .gcno file produced under CMakeFiles/<app>_test.dir/
-    # CMake names the object file after the full source filename including its
-    # extension (e.g. sample_app.c.gcno), so search by that exact pattern.
+    # Locate the .gcno file produced under CMakeFiles/<app>_test.dir/.
+    # CMake names object files after the full source path including its extension,
+    # so sample_app.c produces sample_app.c.gcno (not sample_app.gcno).
+    # Verified layout (Makefile generator, cmake 3.28):
+    #   build_cov/apps/<app>/CMakeFiles/<app>_test.dir/fsw/src/<app>.c.gcno
     OBJ_DIR="${BUILD_COV}/apps/${app}/CMakeFiles/${app}_test.dir"
     GCNO_FILE="$(find "${OBJ_DIR}" -path "*/fsw/src/${app}.c.gcno" 2>/dev/null | head -1)"
 
@@ -91,8 +93,10 @@ for app in ${APP_LIST}; do
     # Run gcov with branch statistics.
     # -b: include branch taken/not-taken counts in the summary
     # -n: suppress .gcov annotation file creation (summary only)
-    # Passing the .gcno file directly avoids the --object-directory naming
-    # mismatch that occurs when CMake appends ".c" to the object file stem.
+    # Invoking gcov on the .gcno file: gcov implicitly loads the companion
+    # .gcda (written by the test binary above) from the same directory. This
+    # avoids the --object-directory naming mismatch that occurs because CMake
+    # appends ".c" to the object file stem (sample_app.c.gcno not sample_app.gcno).
     log "Running gcov -b on ${app}.c"
     GCOV_OUT="$(gcov -b -n "${GCNO_FILE}" 2>/dev/null)"
 
