@@ -168,7 +168,7 @@ A milestone phase is `[ TEST ]`-badged (§4.2) and produces a **hard deliverable
 | `[✅]` 12 | 🟢 FEAT | `cfs_bindings` safe wrappers (CFE_MSG / CFE_SB) | `feat/phase-12-cfs-msg-wrappers` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[✅]` 13 | 🟢 FEAT | `_defs/mids.h` + `cfs_bindings::mids` | `feat/phase-13-mid-macros` | `claude-sonnet-4-6` | L | 100 % ✅ |
 | `[✅]` 14 | 🟢 FEAT | FFI host ↔ `ccsds_wire` conversion helpers | `feat/phase-14-ffi-conversion` | `claude-sonnet-4-6` | M | 100 % ✅ |
-| `[ ]` 15 | 🔴 CRIT | Migrate `ground_station::telemetry` → `ccsds_wire` | `feat/phase-15-telemetry-migration` | `claude-opus-4-7` | M | 100 % ✅ |
+| `[✅]` 15 | 🔴 CRIT | Migrate `ground_station::telemetry` → `ccsds_wire` | `feat/phase-15-telemetry-migration` | `claude-opus-4-7` | M | 100 % ✅ |
 | `[x]` 16 | 🧪 TEST | cfs_bindings round-trip test suite | `feat/phase-16-bindings-roundtrip-tests` | `claude-sonnet-4-6` | L | 100 % ✅ |
 | `[x]` 17 | 🔵 ARCH | cFS app template CMake macro | `feat/phase-17-cfs-app-template` | `claude-opus-4-7` | M | 100 % ✅ |
 | `[ ]` 18 | 🟡 LCC | MISRA C:2012 cppcheck baseline + CI hook | `feat/phase-18-misra-baseline` | `claude-sonnet-4-6` | L | n/a (gate) |

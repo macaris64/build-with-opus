@@ -265,6 +265,7 @@ name = "ground_station"
 version = "0.1.0"
 dependencies = [
  "anyhow",
+ "ccsds_wire",
  "env_logger",
  "log",
 ]
