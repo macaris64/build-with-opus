@@ -407,7 +407,7 @@ mod tests {
 
     /// Instant far enough in the future to guarantee T1 has expired.
     fn far_future() -> Instant {
-        Instant::now() + Duration::from_secs(3600)
+        Instant::now() + Duration::from_hours(1)
     }
 
     // ── C1 ──────────────────────────────────────────────────────────────────
