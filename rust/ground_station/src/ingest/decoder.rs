@@ -231,7 +231,10 @@ mod tests {
 
         decoder.run(frame_rx, router_tx).await;
 
-        assert!(router_rx.try_recv().is_err(), "no packet should be forwarded");
+        assert!(
+            router_rx.try_recv().is_err(),
+            "no packet should be forwarded"
+        );
         assert_eq!(decoder.decode_fail_total(), 1);
         assert_eq!(decoder.dropped_total(), 0);
     }
@@ -259,7 +262,10 @@ mod tests {
 
         decoder.run(frame_rx, router_tx).await;
 
-        assert!(router_rx.try_recv().is_err(), "no packet should be forwarded");
+        assert!(
+            router_rx.try_recv().is_err(),
+            "no packet should be forwarded"
+        );
         assert_eq!(decoder.decode_fail_total(), 1);
         assert_eq!(decoder.dropped_total(), 0);
     }

@@ -27,20 +27,13 @@ async fn main() -> Result<()> {
     // Stub pipeline wiring (Phase 21 scaffold).
     // Channel pairs are declared with architecture-specified capacities (§5.3)
     // but are not yet connected to tasks. Spawn logic lands in Phase 22+.
-    let (_aos_tx, _aos_rx) =
-        tokio::sync::mpsc::channel::<Vec<u8>>(ingest::AOS_TO_DEMUX_CAP);
-    let (_demux_tx, _demux_rx) =
-        tokio::sync::mpsc::channel::<Vec<u8>>(ingest::DEMUX_TO_SPP_CAP);
-    let (_spp_tx, _spp_rx) =
-        tokio::sync::mpsc::channel::<Vec<u8>>(ingest::SPP_TO_ROUTER_CAP);
-    let (_hk_tx, _hk_rx) =
-        tokio::sync::mpsc::channel::<Vec<u8>>(ingest::ROUTER_TO_HK_CAP);
-    let (_event_tx, _event_rx) =
-        tokio::sync::mpsc::channel::<Vec<u8>>(ingest::ROUTER_TO_EVENT_CAP);
-    let (_cfdp_tx, _cfdp_rx) =
-        tokio::sync::mpsc::channel::<Vec<u8>>(ingest::ROUTER_TO_CFDP_CAP);
-    let (_rover_tx, _rover_rx) =
-        tokio::sync::mpsc::channel::<Vec<u8>>(ingest::ROUTER_TO_ROVER_CAP);
+    let (_aos_tx, _aos_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(ingest::AOS_TO_DEMUX_CAP);
+    let (_demux_tx, _demux_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(ingest::DEMUX_TO_SPP_CAP);
+    let (_spp_tx, _spp_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(ingest::SPP_TO_ROUTER_CAP);
+    let (_hk_tx, _hk_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(ingest::ROUTER_TO_HK_CAP);
+    let (_event_tx, _event_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(ingest::ROUTER_TO_EVENT_CAP);
+    let (_cfdp_tx, _cfdp_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(ingest::ROUTER_TO_CFDP_CAP);
+    let (_rover_tx, _rover_rx) = tokio::sync::mpsc::channel::<Vec<u8>>(ingest::ROUTER_TO_ROVER_CAP);
 
     // Yield once so the runtime is exercised before pipeline tasks land (Phase 22+).
     tokio::task::yield_now().await;
