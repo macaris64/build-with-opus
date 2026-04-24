@@ -194,6 +194,152 @@ static void test_invalid_command_increments_counter(void **state)
 }
 
 /* ---------------------------------------------------------------------------
+ * Test: initialization returns error when CFE_ES_RegisterApp fails
+ * --------------------------------------------------------------------------- */
+static void test_init_returns_error_when_register_app_fails(void **state)
+{
+    (void)state;
+
+    will_return(CFE_ES_RegisterApp, CFE_ES_ERR_APP_REGISTER);
+
+    will_return(CFE_ES_RunLoop, false);
+
+    SAMPLE_APP_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * Test: initialization returns error when CFE_EVS_Register fails
+ * --------------------------------------------------------------------------- */
+static void test_init_returns_error_when_evs_register_fails(void **state)
+{
+    (void)state;
+
+    will_return(CFE_ES_RegisterApp, CFE_SUCCESS);
+    will_return(CFE_EVS_Register,   CFE_EVS_APP_FILTER_OVERLOAD);
+
+    will_return(CFE_ES_RunLoop, false);
+
+    SAMPLE_APP_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * Test: initialization returns error when first CFE_SB_Subscribe fails (CMD_MID)
+ * --------------------------------------------------------------------------- */
+static void test_init_returns_error_when_cmd_subscribe_fails(void **state)
+{
+    (void)state;
+
+    will_return(CFE_ES_RegisterApp, CFE_SUCCESS);
+    will_return(CFE_EVS_Register,   CFE_SUCCESS);
+    will_return(CFE_SB_CreatePipe,  1);
+    will_return(CFE_SB_CreatePipe,  CFE_SUCCESS);
+    will_return(CFE_SB_Subscribe,   CFE_SB_MAX_MSGS_MET); /* CMD_MID subscribe fails */
+
+    will_return(CFE_ES_RunLoop, false);
+
+    SAMPLE_APP_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * Test: initialization returns error when second CFE_SB_Subscribe fails (HK_MID)
+ * --------------------------------------------------------------------------- */
+static void test_init_returns_error_when_hk_subscribe_fails(void **state)
+{
+    (void)state;
+
+    will_return(CFE_ES_RegisterApp, CFE_SUCCESS);
+    will_return(CFE_EVS_Register,   CFE_SUCCESS);
+    will_return(CFE_SB_CreatePipe,  1);
+    will_return(CFE_SB_CreatePipe,  CFE_SUCCESS);
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);          /* CMD_MID ok */
+    will_return(CFE_SB_Subscribe,   CFE_SB_MAX_MSGS_MET); /* HK_MID fails */
+
+    will_return(CFE_ES_RunLoop, false);
+
+    SAMPLE_APP_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * Test: SB receive error increments ErrCounter and continues the run loop
+ * --------------------------------------------------------------------------- */
+static void test_sb_receive_error_increments_err_counter(void **state)
+{
+    (void)state;
+
+    will_return(CFE_ES_RegisterApp, CFE_SUCCESS);
+    will_return(CFE_EVS_Register,   CFE_SUCCESS);
+    will_return(CFE_SB_CreatePipe,  1);
+    will_return(CFE_SB_CreatePipe,  CFE_SUCCESS);
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);
+
+    /* One loop pass: ReceiveBuffer returns an error */
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)NULL);
+    will_return(CFE_SB_ReceiveBuffer, CFE_SB_PIPE_RD_ERR);
+
+    /* Exit on the second RunLoop call */
+    will_return(CFE_ES_RunLoop, false);
+
+    SAMPLE_APP_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * Test: unknown message ID on the pipe increments ErrCounter
+ * --------------------------------------------------------------------------- */
+static void test_unknown_msgid_increments_err_counter(void **state)
+{
+    (void)state;
+
+    will_return(CFE_ES_RegisterApp, CFE_SUCCESS);
+    will_return(CFE_EVS_Register,   CFE_SUCCESS);
+    will_return(CFE_SB_CreatePipe,  1);
+    will_return(CFE_SB_CreatePipe,  CFE_SUCCESS);
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);
+
+    CFE_SB_Buffer_t buf;
+    memset(&buf, 0, sizeof(buf));
+
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)&buf);
+    will_return(CFE_SB_ReceiveBuffer, CFE_SUCCESS);
+    will_return(CFE_MSG_GetMsgId,     0xFFFFU); /* unknown MsgId */
+
+    will_return(CFE_ES_RunLoop, false);
+
+    SAMPLE_APP_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * Test: RESET command clears CmdCounter and ErrCounter
+ * --------------------------------------------------------------------------- */
+static void test_reset_command_clears_counters(void **state)
+{
+    (void)state;
+
+    will_return(CFE_ES_RegisterApp, CFE_SUCCESS);
+    will_return(CFE_EVS_Register,   CFE_SUCCESS);
+    will_return(CFE_SB_CreatePipe,  1);
+    will_return(CFE_SB_CreatePipe,  CFE_SUCCESS);
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);
+
+    CFE_SB_Buffer_t buf;
+    memset(&buf, 0, sizeof(buf));
+
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)&buf);
+    will_return(CFE_SB_ReceiveBuffer, CFE_SUCCESS);
+    will_return(CFE_MSG_GetMsgId,     SAMPLE_APP_CMD_MID);
+    will_return(CFE_MSG_GetFcnCode,   SAMPLE_APP_RESET_CC);
+
+    will_return(CFE_ES_RunLoop, false);
+
+    SAMPLE_APP_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
  * Test runner
  * --------------------------------------------------------------------------- */
 int main(void)
@@ -201,8 +347,15 @@ int main(void)
     const struct CMUnitTest tests[] = {
         cmocka_unit_test(test_init_success),
         cmocka_unit_test(test_init_pipe_create_failure),
+        cmocka_unit_test(test_init_returns_error_when_register_app_fails),
+        cmocka_unit_test(test_init_returns_error_when_evs_register_fails),
+        cmocka_unit_test(test_init_returns_error_when_cmd_subscribe_fails),
+        cmocka_unit_test(test_init_returns_error_when_hk_subscribe_fails),
         cmocka_unit_test(test_noop_command_increments_counter),
         cmocka_unit_test(test_invalid_command_increments_counter),
+        cmocka_unit_test(test_sb_receive_error_increments_err_counter),
+        cmocka_unit_test(test_unknown_msgid_increments_err_counter),
+        cmocka_unit_test(test_reset_command_clears_counters),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);

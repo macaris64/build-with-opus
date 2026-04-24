@@ -20,7 +20,33 @@
 # keywords (EXTRA_SOURCES, EXTRA_INCLUDES) added by Phase 19+. Do not
 # pass positional arguments beyond app_name until keywords are defined.
 
+# ── Coverage instrumentation option ──────────────────────────────────────────
+# Adds -fprofile-arcs -ftest-coverage to the _test executable ONLY.
+# Never applied to the FSW OBJECT library (FSW binaries must never be
+# instrumented — see Phase 19 coverage architecture note).
+# Default ON so 'cmake -B build' enables coverage for all apps automatically.
+option(SAKURA_COVERAGE "Enable gcov branch-coverage instrumentation on unit-test executables" ON)
+
 function(sakura_add_cfs_app app_name)
+
+    # ── 0. Auto-generate test-file boilerplate if absent ─────────────────────
+    # configure_file writes to the SOURCE TREE so the file exists when
+    # add_executable() processes it below. The if(NOT EXISTS) guard is
+    # load-bearing: it prevents overwriting hand-edited test files for apps
+    # that have already been onboarded. @ONLY prevents CMake from interpreting
+    # C ${...} syntax inside the template.
+    set(_test_file "${CMAKE_CURRENT_SOURCE_DIR}/fsw/unit-test/${app_name}_test.c")
+    if(NOT EXISTS "${_test_file}")
+        string(TOUPPER "${app_name}" _app_name_upper)
+        set(APP_NAME "${_app_name_upper}")
+        configure_file(
+            "${CMAKE_SOURCE_DIR}/_defs/unit_test_template.c.in"
+            "${_test_file}"
+            @ONLY
+        )
+        message(STATUS "${app_name}: generated unit-test boilerplate → ${_test_file}")
+        unset(APP_NAME)
+    endif()
 
     # ── 1. FSW OBJECT Library ─────────────────────────────────────────────────
     # OBJECT library: .o files can be reused by both the mission link (future
@@ -60,7 +86,20 @@ function(sakura_add_cfs_app app_name)
         )
         target_compile_definitions(${app_name}_test PRIVATE UNIT_TEST)
         target_link_libraries(${app_name}_test PRIVATE ${CMOCKA_LIBRARIES})
+        target_link_directories(${app_name}_test PRIVATE ${CMOCKA_LIBRARY_DIRS})
         target_compile_options(${app_name}_test PRIVATE ${CMOCKA_CFLAGS_OTHER})
+
+        # Coverage flags land here only — never on the FSW OBJECT library above.
+        # SAKURA_COVERAGE defaults ON; disable with -DSAKURA_COVERAGE=OFF for
+        # release builds where instrumentation overhead is unacceptable.
+        if(SAKURA_COVERAGE)
+            target_compile_options(${app_name}_test PRIVATE
+                -fprofile-arcs
+                -ftest-coverage
+            )
+            target_link_libraries(${app_name}_test PRIVATE gcov)
+        endif()
+
         add_test(NAME ${app_name}_unit_tests COMMAND ${app_name}_test)
     else()
         message(WARNING

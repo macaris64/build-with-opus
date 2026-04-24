@@ -36,9 +36,12 @@ typedef struct { CFE_MSG_Message_t Msg; } CFE_SB_Buffer_t;
 typedef uint16_t CFE_MSG_FcnCode_t;
 
 /* ── Status codes ────────────────────────────────────────────────────────── */
-#define CFE_SUCCESS             ((int32) 0)
-#define CFE_SB_BAD_ARGUMENT     ((int32)-1)
-#define CFE_SB_PIPE_RD_ERR      ((int32)-2)
+#define CFE_SUCCESS                  ((int32) 0)
+#define CFE_SB_BAD_ARGUMENT          ((int32)-1)
+#define CFE_SB_PIPE_RD_ERR           ((int32)-2)
+#define CFE_SB_MAX_MSGS_MET          ((int32)-3)
+#define CFE_ES_ERR_APP_REGISTER      ((int32)-4)
+#define CFE_EVS_APP_FILTER_OVERLOAD  ((int32)-5)
 
 /* ── Executive Services constants ───────────────────────────────────────── */
 #define CFE_ES_RunStatus_APP_RUN    1U

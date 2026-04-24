@@ -172,7 +172,7 @@ A milestone phase is `[ TEST ]`-badged (§4.2) and produces a **hard deliverable
 | `[x]` 16 | 🧪 TEST | cfs_bindings round-trip test suite | `feat/phase-16-bindings-roundtrip-tests` | `claude-sonnet-4-6` | L | 100 % ✅ |
 | `[x]` 17 | 🔵 ARCH | cFS app template CMake macro | `feat/phase-17-cfs-app-template` | `claude-opus-4-7` | M | 100 % ✅ |
 | `[x]` 18 | 🟡 LCC | MISRA C:2012 cppcheck baseline + CI hook | `feat/phase-18-misra-baseline` | `claude-sonnet-4-6` | L | n/a (gate) |
-| `[ ]` 19 | 🟡 LCC | CMocka template + branch-coverage gate | `feat/phase-19-cmocka-template` | `claude-sonnet-4-6` | L | 100 % ✅ |
+| `[x]` 19 | 🟡 LCC | CMocka template + branch-coverage gate | `feat/phase-19-cmocka-template` | `claude-sonnet-4-6` | L | 100 % ✅ |
 | `[ ]` 20 | 🧪 TEST | **MILESTONE 2/5 — `cfs_bindings v1.0` + cFS template** | `feat/phase-20-bindings-milestone` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[ ]` 21 | 🔵 ARCH | `ground_station::{ingest,uplink,cfdp,mfile,ui}` scaffold | `feat/phase-21-ground-station-scaffold` | `claude-opus-4-7` | M | 100 % ✅ |
 | `[ ]` 22 | 🟢 FEAT | `AosFramer` (1024 B, FECF CRC-16, OCF) | `feat/phase-22-aos-framer` | `claude-sonnet-4-6` | H | 100 % ✅ |
