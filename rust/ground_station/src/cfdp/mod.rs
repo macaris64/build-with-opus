@@ -2,18 +2,18 @@
 //!
 //! Implements CCSDS File Delivery Protocol (CFDP) Class 1 (unacknowledged)
 //! for the Phase B downlink path. Class 2 (acknowledged) is deferred behind
-//! this [`CfdpProvider`] trait boundary per Q-C3.
+//! the [`CfdpProvider`] trait boundary per Q-C3.
 //!
 //! # Trait Hierarchy (§4.2, Q-C3)
 //!
 //! ```text
 //! CfdpReceiver  ──  on_pdu, finalize_transaction
 //!      ▲
-//! CfdpProvider  ──  send_file, cancel, active_transactions
+//! CfdpProvider  ──  send_file, cancel, poll, active_transactions
 //! ```
 //!
-//! `Class1Receiver` (Phase 25+) implements `CfdpProvider`. Class 2 will add a
-//! second implementation against the same trait without changing call sites.
+//! `Class1Receiver` implements both. Class 2 will add a second implementation
+//! without modifying any call site.
 //!
 //! # Parameters (§4.3)
 //!
@@ -23,6 +23,9 @@
 //! | Transaction timeout     | `10 × OWLT` (from `mission.yaml`) |
 //! | Segment size            | [`CFDP_SEGMENT_SIZE_BYTES`] = 1024|
 //! | Checksum                | CRC-32 IEEE 802.3 (Q-C2)          |
+
+pub mod adapter;
+pub mod class1;
 
 // ---------------------------------------------------------------------------
 // CFDP protocol constants (§4.3).
@@ -38,83 +41,74 @@ pub const CFDP_SEGMENT_SIZE_BYTES: usize = 1_024;
 pub const CFDP_TIMEOUT_OWLT_MULT: u32 = 10;
 
 // ---------------------------------------------------------------------------
-// Core types.
+// Core types — verbatim from §4.2 (Q-C3 definition site).
 // ---------------------------------------------------------------------------
 
-/// Opaque CFDP transaction identifier (wire encoding: `u32` big-endian per §4.2).
-///
-/// Big-endian encoding is enforced at the `ccsds_wire` + `cfs_bindings` boundary
-/// only (Q-C8); this in-memory type is host-endian.
+/// Opaque CFDP transaction identifier (host-endian; Q-C8 conversion at
+/// `ccsds_wire` / `cfs_bindings` boundary only).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
-pub struct TransactionId(pub u32);
+pub struct TransactionId(pub u64);
 
-/// Outcome of a completed or abandoned CFDP transaction.
+/// Errors returned by the CFDP receive/send path (§4.2).
+#[derive(Debug, thiserror::Error)]
+pub enum CfdpError {
+    /// Incoming PDU byte slice could not be parsed.
+    #[error("pdu parse failed: {0}")]
+    Parse(String),
+    /// Referenced transaction is not in the active transaction table.
+    #[error("unknown CFDP transaction: {0:?}")]
+    UnknownTransaction(TransactionId),
+    /// Active transaction table is at capacity ([`CFDP_MAX_TRANSACTIONS`]).
+    #[error("CFDP transaction table full (capacity 16)")]
+    CapacityExceeded,
+    /// CRC-32 mismatch between EOF PDU and assembled file (Q-C2).
+    #[error("crc-32 mismatch for transaction {0:?}")]
+    CrcMismatch(TransactionId),
+    /// No EOF PDU received within `CFDP_TIMEOUT_OWLT_MULT × OWLT` deadline.
+    #[error("transaction {0:?} timed out")]
+    Timeout(TransactionId),
+    /// Underlying I/O failure during file assembly.
+    #[error("I/O error: {0}")]
+    Io(#[from] std::io::Error),
+}
+
+/// Outcome of a completed or abandoned CFDP transaction (§4.2).
 #[derive(Debug)]
 pub enum TransactionOutcome {
-    /// File received and CRC-32 verified against the EOF PDU (Q-C2).
-    Delivered {
+    /// File received, CRC-32 verified against the EOF PDU (Q-C2).
+    Completed {
         /// Transaction that produced the file.
         id: TransactionId,
         /// Absolute path of the assembled output file.
         path: std::path::PathBuf,
-        /// CRC-32 IEEE 802.3 of the complete file, as carried in the EOF PDU.
-        crc32: u32,
+        /// Total bytes written.
+        bytes: u64,
     },
     /// Transaction abandoned due to timeout or integrity failure.
     Abandoned {
         /// Transaction that was abandoned.
         id: TransactionId,
-        /// Reason for abandonment.
-        reason: AbandonReason,
+        /// Human-readable abandonment reason.
+        reason: String,
         /// Bytes received before abandonment (partial file retained as `<id>.partial`).
         bytes_received: u64,
     },
 }
 
-/// Reason a CFDP transaction was abandoned.
-#[derive(Debug)]
-pub enum AbandonReason {
-    /// No EOF PDU received within `CFDP_TIMEOUT_OWLT_MULT × OWLT` deadline.
-    Timeout,
-    /// CRC-32 in the EOF PDU did not match the reassembled file (Q-C2).
-    CrcMismatch,
-    /// Caller invoked [`CfdpProvider::cancel`].
-    Cancelled,
-}
-
-/// Errors returned by the CFDP receive/send path.
-#[derive(Debug, thiserror::Error)]
-pub enum CfdpError {
-    /// Referenced transaction is not in the active transaction table.
-    #[error("unknown CFDP transaction: {0:?}")]
-    UnknownTransaction(TransactionId),
-    /// Incoming PDU byte slice could not be parsed.
-    #[error("malformed CFDP PDU: {0}")]
-    MalformedPdu(String),
-    /// Active transaction table is at capacity ([`CFDP_MAX_TRANSACTIONS`]).
-    #[error("CFDP transaction table full")]
-    TableFull,
-    /// Underlying I/O failure during file assembly or persistence.
-    #[error("I/O error: {0}")]
-    Io(#[from] std::io::Error),
-}
-
 // ---------------------------------------------------------------------------
-// Trait definitions (Q-C3 resolution — establishes the Class 1 / Class 2
-// boundary so call sites never depend on a concrete implementation).
+// Trait definitions (Q-C3 resolution).
 // ---------------------------------------------------------------------------
 
 /// Receive side of CFDP: accept incoming PDUs and finalise transactions.
 ///
-/// Implemented by `Class1Receiver` (Phase 25+). Class 2 will provide a second
-/// implementation without modifying any call site (Q-C3).
+/// Signature frozen by docs/architecture/07-comms-stack.md §5.2 — DO NOT CHANGE.
 pub trait CfdpReceiver {
     /// Process a single raw CFDP PDU byte slice.
     ///
     /// # Errors
     ///
-    /// Returns [`CfdpError::MalformedPdu`] if the PDU cannot be parsed, or
-    /// [`CfdpError::TableFull`] if the active transaction table is at capacity.
+    /// Returns [`CfdpError::Parse`] if the PDU cannot be parsed, or
+    /// [`CfdpError::CapacityExceeded`] if the active transaction table is full.
     fn on_pdu(&mut self, pdu: &[u8]) -> Result<(), CfdpError>;
 
     /// Flush transaction state, verify CRC-32, and return the final outcome.
@@ -122,20 +116,17 @@ pub trait CfdpReceiver {
     /// # Errors
     ///
     /// Returns [`CfdpError::UnknownTransaction`] if `id` is not in the active
-    /// transaction table.
+    /// transaction table, or [`CfdpError::CrcMismatch`] on checksum failure.
     fn finalize_transaction(&mut self, id: TransactionId) -> Result<TransactionOutcome, CfdpError>;
 }
 
-/// Full CFDP provider: receive + send + transaction lifecycle.
-///
-/// `send_file` is a no-op stub in Phase B (downlink-only ground station).
-/// Uplink support lands in Phase 28+.
+/// Full CFDP provider: receive + send + transaction lifecycle (§4.2, Q-C3).
 pub trait CfdpProvider: CfdpReceiver {
     /// Initiate an uplink file transfer to a remote CFDP entity (Phase 28+).
     ///
     /// # Errors
     ///
-    /// Returns [`CfdpError::TableFull`] if the transaction table is at capacity,
+    /// Returns [`CfdpError::CapacityExceeded`] if the transaction table is full,
     /// or [`CfdpError::Io`] if `src` cannot be read.
     fn send_file(
         &mut self,
@@ -151,6 +142,12 @@ pub trait CfdpProvider: CfdpReceiver {
     /// Returns [`CfdpError::UnknownTransaction`] if `id` is not active.
     fn cancel(&mut self, id: TransactionId) -> Result<(), CfdpError>;
 
-    /// Return all currently active transaction identifiers.
+    /// Drive timeout eviction and emit outcomes for completed/abandoned transactions.
+    ///
+    /// MUST be called at ≥ 1 Hz with the current TAI time (§4.3). Evicts any
+    /// transaction whose age exceeds `CFDP_TIMEOUT_OWLT_MULT × owlt`.
+    fn poll(&mut self, now: ccsds_wire::Cuc) -> Vec<TransactionOutcome>;
+
+    /// Return all currently active transaction identifiers (for HK and UI).
     fn active_transactions(&self) -> Vec<TransactionId>;
 }
