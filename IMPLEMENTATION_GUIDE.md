@@ -178,7 +178,7 @@ A milestone phase is `[ TEST ]`-badged (§4.2) and produces a **hard deliverable
 | `[x]` 22 | 🟢 FEAT | `AosFramer` (1024 B, FECF CRC-16, OCF) | `feat/phase-22-aos-framer` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[x]` 23 | 🟢 FEAT | `VcDemultiplexer` + bounded mpsc | `feat/phase-23-vc-demux` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[x]` 24 | 🟢 FEAT | `SppDecoder` with backpressure events | `feat/phase-24-spp-decoder` | `claude-sonnet-4-6` | M | 100 % ✅ |
-| `[ ]` 25 | 🔴 CRIT | `ApidRouter` + fault-APID rejection | `feat/phase-25-apid-router` | `claude-opus-4-7` | H | 100 % ✅ |
+| `[x]` 25 | 🔴 CRIT | `ApidRouter` + fault-APID rejection | `feat/phase-25-apid-router` | `claude-opus-4-7` | H | 100 % ✅ |
 | `[ ]` 26 | 🟢 FEAT | `CfdpProvider` trait + `Class1Receiver` | `feat/phase-26-cfdp-class1` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[ ]` 27 | 🟢 FEAT | `MFileAssembler` out-of-order reassembly | `feat/phase-27-mfile-assembler` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[ ]` 28 | 🟢 FEAT | TC uplink pipeline (TcBuilder + Cop1 + TcFramer) | `feat/phase-28-tc-uplink` | `claude-sonnet-4-6` | H | 100 % ✅ |
