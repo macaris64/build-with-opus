@@ -15,6 +15,9 @@ bindgen = "0.69"
 log        = { workspace = true }
 ccsds_wire = { path = "../ccsds_wire" }
 
+[dev-dependencies]
+ccsds_wire = { path = "../ccsds_wire" }
+
 [lints]
 workspace = true
 
