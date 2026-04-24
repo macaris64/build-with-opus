@@ -16,9 +16,11 @@ tokio      = { workspace = true }
 bytes      = { workspace = true }
 crc        = { workspace = true }
 ccsds_wire = { path = "../ccsds_wire" }
+cfdp-core  = { workspace = true }
 
 [dev-dependencies]
-tokio = { workspace = true, features = ["io-util", "test-util"] }
+tokio    = { workspace = true, features = ["io-util", "test-util"] }
+tempfile = { workspace = true }
 
 [lints]
 workspace = true

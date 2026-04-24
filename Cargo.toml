@@ -26,6 +26,7 @@ thiserror  = "1"
 crc        = "3"
 proptest   = "1"
 serde      = { version = "1", features = ["derive"] }
+tempfile   = "3"
 
 # Workspace-wide lint policy. Verbatim from
 # docs/architecture/06-ground-segment-rust.md §1.2. Each member crate opts
