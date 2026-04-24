@@ -20,16 +20,69 @@ defaults:
 
 jobs:
   # ──────────────────────────────────────────────────────────────────────────
+  # Path-change detection — PR-only gate that drives conditional jobs below.
+  #
+  # Root cause of the previous always-skip bug:
+  #   github.event.pull_request.changed_files is an integer count, not a list.
+  #   contains(toJson(<int>), 'rust/') is always false → every conditional
+  #   job was permanently skipped on pull_request events.
+  #
+  # Fix: dorny/paths-filter fetches the actual changed-file list via the
+  # GitHub API (no checkout needed for PR events). Non-PR events skip this
+  # job; downstream jobs use always() to override skip-propagation and
+  # short-circuit with github.event_name != 'pull_request'.
+  # ──────────────────────────────────────────────────────────────────────────
+  changes:
+    name: detect-changes
+    runs-on: ubuntu-22.04
+    if: github.event_name == 'pull_request'
+    permissions:
+      pull-requests: read
+    outputs:
+      cfs:          ${{ steps.f.outputs.cfs }}
+      ros2:         ${{ steps.f.outputs.ros2 }}
+      rust:         ${{ steps.f.outputs.rust }}
+      apps:         ${{ steps.f.outputs.apps }}
+      traceability: ${{ steps.f.outputs.traceability }}
+      docs:         ${{ steps.f.outputs.docs }}
+      puml:         ${{ steps.f.outputs.puml }}
+    steps:
+      - uses: dorny/paths-filter@v3
+        id: f
+        with:
+          filters: |
+            cfs:
+              - 'apps/**'
+              - '_defs/**'
+              - 'CMakeLists.txt'
+            ros2:
+              - 'ros2_ws/**'
+            rust:
+              - 'rust/**'
+              - 'Cargo.toml'
+              - 'Cargo.lock'
+            apps:
+              - 'apps/**'
+            traceability:
+              - 'docs/mission/requirements/**'
+              - 'docs/mission/verification/V&V-Plan.md'
+            docs:
+              - 'docs/**'
+              - 'README.md'
+            puml:
+              - '**/*.puml'
+
+  # ──────────────────────────────────────────────────────────────────────────
   # 2.1  cfs-ctest — SYS-REQ-0070
   # ──────────────────────────────────────────────────────────────────────────
   cfs-ctest:
     name: cfs-ctest
     runs-on: ubuntu-22.04
+    needs: [changes]
     if: |
-      github.event_name != 'pull_request' ||
-      contains(toJson(github.event.pull_request.changed_files), 'apps/') ||
-      contains(toJson(github.event.pull_request.changed_files), '_defs/') ||
-      contains(toJson(github.event.pull_request.changed_files), 'CMakeLists.txt')
+      always() &&
+      (github.event_name != 'pull_request' ||
+       needs.changes.outputs.cfs == 'true')
     steps:
       - uses: actions/checkout@v4
 
@@ -60,9 +113,11 @@ jobs:
   ros2-colcon:
     name: ros2-colcon
     runs-on: ubuntu-22.04
+    needs: [changes]
     if: |
-      github.event_name != 'pull_request' ||
-      contains(toJson(github.event.pull_request.changed_files), 'ros2_ws/')
+      always() &&
+      (github.event_name != 'pull_request' ||
+       needs.changes.outputs.ros2 == 'true')
     steps:
       - uses: actions/checkout@v4
 
@@ -102,11 +157,11 @@ jobs:
   rust-cargo:
     name: rust-cargo
     runs-on: ubuntu-22.04
+    needs: [changes]
     if: |
-      github.event_name != 'pull_request' ||
-      contains(toJson(github.event.pull_request.changed_files), 'rust/') ||
-      contains(toJson(github.event.pull_request.changed_files), 'Cargo.toml') ||
-      contains(toJson(github.event.pull_request.changed_files), 'Cargo.lock')
+      always() &&
+      (github.event_name != 'pull_request' ||
+       needs.changes.outputs.rust == 'true')
     steps:
       - uses: actions/checkout@v4
 
@@ -150,9 +205,11 @@ jobs:
   cppcheck:
     name: cppcheck
     runs-on: ubuntu-22.04
+    needs: [changes]
     if: |
-      github.event_name != 'pull_request' ||
-      contains(toJson(github.event.pull_request.changed_files), 'apps/')
+      always() &&
+      (github.event_name != 'pull_request' ||
+       needs.changes.outputs.apps == 'true')
     steps:
       - uses: actions/checkout@v4
 
@@ -170,10 +227,11 @@ jobs:
   traceability-lint:
     name: traceability-lint
     runs-on: ubuntu-22.04
+    needs: [changes]
     if: |
-      github.event_name != 'pull_request' ||
-      contains(toJson(github.event.pull_request.changed_files), 'docs/mission/requirements/') ||
-      contains(toJson(github.event.pull_request.changed_files), 'docs/mission/verification/V&V-Plan.md')
+      always() &&
+      (github.event_name != 'pull_request' ||
+       needs.changes.outputs.traceability == 'true')
     steps:
       - uses: actions/checkout@v4
 
@@ -181,7 +239,7 @@ jobs:
         run: python3 scripts/traceability-lint.py --repo-root .
 
   # ──────────────────────────────────────────────────────────────────────────
-  # 2.6  apid-mid-lint — apid-registry change control
+  # 2.6  apid-mid-lint — apid-registry change control (always runs)
   # ──────────────────────────────────────────────────────────────────────────
   apid-mid-lint:
     name: apid-mid-lint
@@ -198,9 +256,11 @@ jobs:
   citation-lint:
     name: citation-lint
     runs-on: ubuntu-22.04
+    needs: [changes]
     if: |
-      github.event_name != 'pull_request' ||
-      contains(toJson(github.event.pull_request.changed_files), 'docs/')
+      always() &&
+      (github.event_name != 'pull_request' ||
+       needs.changes.outputs.docs == 'true')
     steps:
       - uses: actions/checkout@v4
 
@@ -213,10 +273,11 @@ jobs:
   link-check:
     name: link-check
     runs-on: ubuntu-22.04
+    needs: [changes]
     if: |
-      github.event_name != 'pull_request' ||
-      contains(toJson(github.event.pull_request.changed_files), 'docs/') ||
-      contains(toJson(github.event.pull_request.changed_files), 'README.md')
+      always() &&
+      (github.event_name != 'pull_request' ||
+       needs.changes.outputs.docs == 'true')
     steps:
       - uses: actions/checkout@v4
 
@@ -244,9 +305,11 @@ jobs:
   plantuml-parse:
     name: plantuml-parse
     runs-on: ubuntu-22.04
+    needs: [changes]
     if: |
-      github.event_name != 'pull_request' ||
-      contains(toJson(github.event.pull_request.changed_files), '.puml')
+      always() &&
+      (github.event_name != 'pull_request' ||
+       needs.changes.outputs.puml == 'true')
     steps:
       - uses: actions/checkout@v4
 
@@ -269,9 +332,11 @@ jobs:
   mermaid-parse:
     name: mermaid-parse
     runs-on: ubuntu-22.04
+    needs: [changes]
     if: |
-      github.event_name != 'pull_request' ||
-      contains(toJson(github.event.pull_request.changed_files), 'docs/')
+      always() &&
+      (github.event_name != 'pull_request' ||
+       needs.changes.outputs.docs == 'true')
     steps:
       - uses: actions/checkout@v4
 
