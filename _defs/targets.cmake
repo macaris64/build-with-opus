@@ -5,7 +5,6 @@
 # Must be included before any add_subdirectory(apps/*) calls so that
 # sakura_add_cfs_app() is defined when each app's CMakeLists.txt is processed.
 
-# Provides sakura_add_cfs_app(<app_name>) to all app CMakeLists.txt files.
 # CMAKE_CURRENT_LIST_DIR resolves to _defs/ regardless of include chain depth.
 include("${CMAKE_CURRENT_LIST_DIR}/cfs_app_template.cmake")
 
