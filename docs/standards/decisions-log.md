@@ -19,7 +19,7 @@ When a decision is pending, the answer here is authoritative; the definition-sit
 |---|---|---|---|---|
 | Q-C1 | Cryobot tether bitrate | 10 Mbps nominal; 100 kbps under BW-collapse. | [07-comms-stack.md §6](../architecture/07-comms-stack.md) | resolved |
 | Q-C2 | CFDP checksum | CRC-32 (IEEE 802.3 polynomial) for Class 1. | [07-comms-stack.md §5](../architecture/07-comms-stack.md) | resolved |
-| Q-C3 | CFDP Class 2 boundary | Use the `cfdp-core` crate with a transport module. Boundary is the `CfdpProvider` trait in `rust/ground_station/src/cfdp/`. Class 1 implements `CfdpProvider` via `Class1Receiver`; Class 2 lands later as an additional implementation against the same trait. | [06-ground-segment-rust.md](../architecture/06-ground-segment-rust.md) (B3, planned) | pending |
+| Q-C3 | CFDP Class 2 boundary | Use the `cfdp-core` crate with a transport module. Boundary is the `CfdpProvider` trait in `rust/ground_station/src/cfdp/`. Class 1 implements `CfdpProvider` via `Class1Receiver`; Class 2 lands later as an additional implementation against the same trait. | [06-ground-segment-rust.md](../architecture/06-ground-segment-rust.md) | resolved |
 | Q-C4 | AOS Transfer Frame size | 1024 bytes. | [07-comms-stack.md §3](../architecture/07-comms-stack.md) | resolved |
 | Q-C5 | Proximity-1 hailing cadence / LOS timeout | 1 Hz hailing during acquisition; 30 s session-establishment LOS timeout. | [ICD-orbiter-relay.md §3](../interfaces/ICD-orbiter-relay.md) | resolved |
 | Q-C6 | CCSDS secondary header format | Time (CUC 7B) + command/telemetry code (2B BE) + instance ID (1B) — total **10 bytes**. | [08-timing-and-clocks.md §2](../architecture/08-timing-and-clocks.md) | resolved |

@@ -11,6 +11,8 @@ path = "src/main.rs"
 anyhow     = { workspace = true }
 log        = { workspace = true }
 env_logger = { workspace = true }
+thiserror  = { workspace = true }
+tokio      = { workspace = true }
 ccsds_wire = { path = "../ccsds_wire" }
 
 [lints]
