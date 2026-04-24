@@ -176,7 +176,7 @@ A milestone phase is `[ TEST ]`-badged (§4.2) and produces a **hard deliverable
 | `[✅]` 20 | 🧪 TEST | **MILESTONE 2/5 — `cfs_bindings v1.0` + cFS template** | `feat/phase-20-bindings-milestone` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[✅]` 21 | 🔵 ARCH | `ground_station::{ingest,uplink,cfdp,mfile,ui}` scaffold | `feat/phase-21-ground-station-scaffold` | `claude-opus-4-7` | M | 100 % ✅ |
 | `[x]` 22 | 🟢 FEAT | `AosFramer` (1024 B, FECF CRC-16, OCF) | `feat/phase-22-aos-framer` | `claude-sonnet-4-6` | H | 100 % ✅ |
-| `[ ]` 23 | 🟢 FEAT | `VcDemultiplexer` + bounded mpsc | `feat/phase-23-vc-demux` | `claude-sonnet-4-6` | M | 100 % ✅ |
+| `[x]` 23 | 🟢 FEAT | `VcDemultiplexer` + bounded mpsc | `feat/phase-23-vc-demux` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[ ]` 24 | 🟢 FEAT | `SppDecoder` with backpressure events | `feat/phase-24-spp-decoder` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[ ]` 25 | 🔴 CRIT | `ApidRouter` + fault-APID rejection | `feat/phase-25-apid-router` | `claude-opus-4-7` | H | 100 % ✅ |
 | `[ ]` 26 | 🟢 FEAT | `CfdpProvider` trait + `Class1Receiver` | `feat/phase-26-cfdp-class1` | `claude-sonnet-4-6` | H | 100 % ✅ |
