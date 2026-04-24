@@ -13,7 +13,12 @@ log        = { workspace = true }
 env_logger = { workspace = true }
 thiserror  = { workspace = true }
 tokio      = { workspace = true }
+bytes      = { workspace = true }
+crc        = { workspace = true }
 ccsds_wire = { path = "../ccsds_wire" }
+
+[dev-dependencies]
+tokio = { workspace = true, features = ["io-util", "test-util"] }
 
 [lints]
 workspace = true

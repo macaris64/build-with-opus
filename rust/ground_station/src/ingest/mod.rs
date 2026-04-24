@@ -60,15 +60,26 @@ pub const ROUTER_TO_CFDP_CAP: usize = 256;
 /// Bounded channel capacity: [`ApidRouter`] → rover-forward archive (§5.3).
 pub const ROUTER_TO_ROVER_CAP: usize = 256;
 
+pub mod framer;
+
 // ---------------------------------------------------------------------------
-// Placeholder frame / packet carrier types.
-// Struct bodies will be populated in Phase 22 (AosFramer implementation).
+// Inter-stage frame / packet carrier types.
 // ---------------------------------------------------------------------------
 
-/// Carrier for a single AOS transfer frame (1024 B max per Q-C4).
+/// Carrier for a single decoded AOS transfer frame (Q-C4: fixed 1024 B on wire).
 ///
-/// Wire layout and field accessors are defined in Phase 22.
-pub struct AosFrame;
+/// Produced by [`framer::AosFramer`] and consumed by the `VcDemultiplexer`
+/// (Phase 23). `data_field` is a zero-copy [`bytes::Bytes`] slice.
+#[derive(Debug, Clone)]
+pub struct AosFrame {
+    /// Virtual Channel ID (6-bit, 0–63), extracted from AOS primary header.
+    pub vc_id: u8,
+    /// Operational Control Field / CLCW (4 bytes), present when `OCF_FLAG=1`
+    /// in the AOS primary header.
+    pub ocf: Option<[u8; 4]>,
+    /// Data field bytes: 1012 B when OCF present, 1016 B when absent.
+    pub data_field: bytes::Bytes,
+}
 
 /// Routing decision produced by [`ApidRouter`] for each decoded space packet.
 ///
