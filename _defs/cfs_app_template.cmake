@@ -20,7 +20,34 @@
 # keywords (EXTRA_SOURCES, EXTRA_INCLUDES) added by Phase 19+. Do not
 # pass positional arguments beyond app_name until keywords are defined.
 
+# SAKURA_COVERAGE is declared in the root CMakeLists.txt (default OFF).
+# This macro reads it; it does not own the declaration.
+
 function(sakura_add_cfs_app app_name)
+
+    # ── 0. Auto-generate test-file boilerplate if absent ─────────────────────
+    # Scaffold contract: configure_file writes into the SOURCE TREE so that
+    # add_executable() below can reference the file by its source path, and so
+    # that the developer can immediately commit and hand-edit it. This is an
+    # intentional one-shot write — not a build-time regeneration. The
+    # if(NOT EXISTS) guard is load-bearing: it prevents overwriting hand-edited
+    # test files for apps that have already been onboarded. @ONLY prevents
+    # CMake from interpreting C ${...} syntax inside the template.
+    #
+    # _APP_NAME_UPPER is function-scoped (prefixed _ by convention) to prevent
+    # namespace pollution if configure_file is called again in the same scope.
+    set(_test_file "${CMAKE_CURRENT_SOURCE_DIR}/fsw/unit-test/${app_name}_test.c")
+    if(NOT EXISTS "${_test_file}")
+        string(TOUPPER "${app_name}" _app_name_upper)
+        set(_APP_NAME_UPPER "${_app_name_upper}")
+        configure_file(
+            "${CMAKE_SOURCE_DIR}/_defs/unit_test_template.c.in"
+            "${_test_file}"
+            @ONLY
+        )
+        message(STATUS "${app_name}: generated unit-test boilerplate → ${_test_file}")
+        unset(_APP_NAME_UPPER)
+    endif()
 
     # ── 1. FSW OBJECT Library ─────────────────────────────────────────────────
     # OBJECT library: .o files can be reused by both the mission link (future
@@ -60,7 +87,22 @@ function(sakura_add_cfs_app app_name)
         )
         target_compile_definitions(${app_name}_test PRIVATE UNIT_TEST)
         target_link_libraries(${app_name}_test PRIVATE ${CMOCKA_LIBRARIES})
+        target_link_directories(${app_name}_test PRIVATE ${CMOCKA_LIBRARY_DIRS})
         target_compile_options(${app_name}_test PRIVATE ${CMOCKA_CFLAGS_OTHER})
+
+        # Coverage flags land here only — never on the FSW OBJECT library above.
+        # SAKURA_COVERAGE is declared OFF in the root CMakeLists.txt; enable
+        # explicitly with -DSAKURA_COVERAGE=ON (scripts/coverage-gate.sh does this).
+        # --coverage at link time is accepted by both GCC and Clang; -lgcov is
+        # GCC-only and would break Clang-based sanitizer runs.
+        if(SAKURA_COVERAGE)
+            target_compile_options(${app_name}_test PRIVATE
+                -fprofile-arcs
+                -ftest-coverage
+            )
+            target_link_options(${app_name}_test PRIVATE --coverage)
+        endif()
+
         add_test(NAME ${app_name}_unit_tests COMMAND ${app_name}_test)
     else()
         message(WARNING
@@ -87,7 +129,7 @@ function(sakura_add_cfs_app app_name)
         add_custom_target(${app_name}_cppcheck
             COMMAND ${SAKURA_CPPCHECK_EXECUTABLE}
                 --enable=all
-                --std=c11
+                --std=c17
                 --error-exitcode=1
                 --inline-suppr
                 --suppress=missingIncludeSystem

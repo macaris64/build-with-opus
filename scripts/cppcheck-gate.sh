@@ -41,9 +41,11 @@ fi
 BASELINE_SORTED=$(sort "${BASELINE}")
 
 # comm -13: lines present in CURRENT but absent from BASELINE → regressions
+# printf '%s' avoids the trailing newline that echo adds to empty strings, which
+# would make comm see a one-line blank input and produce a spurious regression.
 NEW_FINDINGS=$(comm -13 \
-    <(echo "${BASELINE_SORTED}") \
-    <(echo "${CURRENT}") \
+    <(printf '%s' "${BASELINE_SORTED}") \
+    <(printf '%s' "${CURRENT}") \
     || true)
 
 if [[ -n "${NEW_FINDINGS}" ]]; then

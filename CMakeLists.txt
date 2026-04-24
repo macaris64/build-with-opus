@@ -15,6 +15,11 @@ include(CTest)
 # Mission-level definitions (targets, spacecraft ID)
 include(_defs/targets.cmake)
 
+# ── Coverage gate option ───────────────────────────────────────────────────────
+# Adds -fprofile-arcs/-ftest-coverage to _test executables only (never FSW).
+# Default OFF for normal dev builds; scripts/coverage-gate.sh passes ON explicitly.
+option(SAKURA_COVERAGE "Enable gcov branch-coverage instrumentation on unit-test executables" OFF)
+
 # ── cFS Applications ──────────────────────────────────────────────────────────
 # Each app lives under apps/<name>/ and owns its own CMakeLists.txt.
 # In a full cFS integration, the cFE cmake framework provides add_cfe_app().

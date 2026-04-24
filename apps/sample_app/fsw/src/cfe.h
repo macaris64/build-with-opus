@@ -36,9 +36,21 @@ typedef struct { CFE_MSG_Message_t Msg; } CFE_SB_Buffer_t;
 typedef uint16_t CFE_MSG_FcnCode_t;
 
 /* ── Status codes ────────────────────────────────────────────────────────── */
-#define CFE_SUCCESS             ((int32) 0)
-#define CFE_SB_BAD_ARGUMENT     ((int32)-1)
-#define CFE_SB_PIPE_RD_ERR      ((int32)-2)
+/* IMPORTANT: values below are STUB APPROXIMATIONS used only in unit tests.
+ * Real cFE status codes live in a 32-bit namespace, e.g.:
+ *   CFE_SUCCESS             = 0x00000000
+ *   CFE_SB_BAD_ARGUMENT     = 0xCA000003
+ *   CFE_SB_PIPE_RD_ERR      = 0xCA000005
+ *   CFE_SB_MAX_MSGS_MET     = 0xCA000004
+ *   CFE_ES_ERR_APP_REGISTER = 0xE8000004
+ *   CFE_EVS_APP_FILTER_OVERLOAD = 0xEC000003
+ * will_return() chains in tests will need updating when integrating real cFE. */
+#define CFE_SUCCESS                  ((int32) 0)
+#define CFE_SB_BAD_ARGUMENT          ((int32)-1)
+#define CFE_SB_PIPE_RD_ERR           ((int32)-2)
+#define CFE_SB_MAX_MSGS_MET          ((int32)-3)
+#define CFE_ES_ERR_APP_REGISTER      ((int32)-4)
+#define CFE_EVS_APP_FILTER_OVERLOAD  ((int32)-5)
 
 /* ── Executive Services constants ───────────────────────────────────────── */
 #define CFE_ES_RunStatus_APP_RUN    1U

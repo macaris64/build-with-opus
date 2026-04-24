@@ -18,9 +18,17 @@ rust/_lint_probe/Cargo.lock
 
 # ─── C / CMake ────────────────────────────────────────────────────────────────
 build/
+build*/
+build_cov/
 *.o
 *.a
 *.d
+*.gcda
+*.gcno
+*.gcov
+*.deb
+# Temp scaffold used to smoke-test the Phase 19 template mechanism
+apps/hello_app/
 compile_commands.json
 CMakeCache.txt
 CMakeFiles/

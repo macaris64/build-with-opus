@@ -2,7 +2,19 @@
 # Wired into the full GitHub Actions workflow in Phase 49.
 # Run locally with: act -j cppcheck
 name: MISRA cppcheck gate
-on: [push, pull_request]
+on:
+  push:
+    paths:
+      - 'apps/**'
+      - '_defs/**'
+      - 'scripts/cppcheck-gate.sh'
+      - 'cppcheck-baseline.txt'
+  pull_request:
+    paths:
+      - 'apps/**'
+      - '_defs/**'
+      - 'scripts/cppcheck-gate.sh'
+      - 'cppcheck-baseline.txt'
 jobs:
   cppcheck:
     runs-on: ubuntu-latest
