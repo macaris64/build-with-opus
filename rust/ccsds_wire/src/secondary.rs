@@ -413,7 +413,7 @@ mod tests {
                 FuncCode::new(fc_raw).unwrap(),
                 InstanceId::new(1).unwrap(),
             );
-            assert_eq!(hdr.time_suspect(), expected, "func_code=0x{fc_raw:04X}",);
+            assert_eq!(hdr.time_suspect(), expected, "func_code=0x{fc_raw:04X}");
         }
     }
 }

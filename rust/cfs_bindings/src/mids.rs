@@ -16,8 +16,8 @@ mod tests {
 
     const REGISTRY: &str = include_str!("../../../docs/interfaces/apid-registry.md");
 
-    /// G: apid-registry.md allocates APID 0x100 to sample_app HK TM.
-    /// W: SAMPLE_APP_HK_MID is derived via 0x0800 | 0x100.
+    /// G: `apid-registry.md` allocates APID 0x100 to `sample_app` HK TM.
+    /// W: `SAMPLE_APP_HK_MID` is derived via 0x0800 | 0x100.
     /// T: constant equals 0x0900 and registry still lists that APID entry.
     #[test]
     fn test_sample_app_hk_mid_matches_registry() {
@@ -28,8 +28,8 @@ mod tests {
         assert_eq!(SAMPLE_APP_HK_MID, 0x0900_u32);
     }
 
-    /// G: apid-registry.md allocates APID 0x180 to sample_app TC.
-    /// W: SAMPLE_APP_CMD_MID is derived via 0x1800 | 0x180.
+    /// G: `apid-registry.md` allocates APID 0x180 to `sample_app` TC.
+    /// W: `SAMPLE_APP_CMD_MID` is derived via 0x1800 | 0x180.
     /// T: constant equals 0x1980 and registry still lists that APID entry.
     #[test]
     fn test_sample_app_cmd_mid_matches_registry() {
@@ -40,7 +40,7 @@ mod tests {
         assert_eq!(SAMPLE_APP_CMD_MID, 0x1980_u32);
     }
 
-    /// G: orbiter_cdh is allocated APID 0x101 (TM) and 0x181 (TC) in the registry.
+    /// G: `orbiter_cdh` is allocated APID 0x101 (TM) and 0x181 (TC) in the registry.
     /// W: MID constants are derived by formula.
     /// T: values equal 0x0901 and 0x1981 respectively.
     #[test]
@@ -54,7 +54,7 @@ mod tests {
     /// T: high-12-bit mask equals 0x0800 (TM) or 0x1800 (TC) for all orbiter MIDs.
     #[test]
     fn test_all_orbiter_mids_follow_formula() {
-        let tm_mids: &[u32] = &[
+        let hk_mids: &[u32] = &[
             SAMPLE_APP_HK_MID,
             ORBITER_CDH_HK_MID,
             ORBITER_ADCS_HK_MID,
@@ -62,7 +62,7 @@ mod tests {
             ORBITER_POWER_HK_MID,
             ORBITER_PAYLOAD_HK_MID,
         ];
-        let tc_mids: &[u32] = &[
+        let cmd_mids: &[u32] = &[
             SAMPLE_APP_CMD_MID,
             ORBITER_CDH_CMD_MID,
             ORBITER_ADCS_CMD_MID,
@@ -70,14 +70,14 @@ mod tests {
             ORBITER_POWER_CMD_MID,
             ORBITER_PAYLOAD_CMD_MID,
         ];
-        for mid in tm_mids {
+        for mid in hk_mids {
             assert_eq!(
                 mid & 0xF800,
                 0x0800,
                 "TM MID 0x{mid:04X} must have 0x0800 prefix"
             );
         }
-        for mid in tc_mids {
+        for mid in cmd_mids {
             assert_eq!(
                 mid & 0xF800,
                 0x1800,
@@ -108,7 +108,7 @@ mod tests {
         for mid in all_mids {
             let apid = mid & 0x07FF;
             assert!(
-                apid >= 0x100 && apid <= 0x7FE,
+                (0x100..=0x7FE).contains(&apid),
                 "MID 0x{mid:04X} derives APID 0x{apid:03X} which is in the CCSDS-reserved range"
             );
         }
