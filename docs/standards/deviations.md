@@ -38,6 +38,15 @@ Each entry must include:
 
 ---
 
+### D-003 — RUSTSEC-2024-0436: `paste` crate unmaintained (transitive via `cfdp-rs`)
+
+- **Standard & clause**: `.claude/rules/security.md` — "`cargo audit --deny warnings` must pass in CI before merge."
+- **Deviation**: `cargo audit --deny warnings` would fail on RUSTSEC-2024-0436 (`paste` unmaintained) without the `.cargo/audit.toml` ignore entry. The advisory is suppressed at the workspace level.
+- **Rationale**: `paste` is a transitive dependency: `cfdp-rs 0.3.0 → spacepackets 0.16.1 → paste 1.0.15`. `cfdp-rs` is pinned in the workspace per Phase 26 (Q-C3 deliverable). The `paste` crate has no known vulnerabilities; it is merely flagged as unmaintained. SAKURA-II has no direct or first-level dependency on `paste`.
+- **Scope**: `.cargo/audit.toml` (ignore entry); `Cargo.lock`; Phase 26 `cfdp-core` dep chain.
+- **Review**: project engineer, Phase 26 (accepted: no CVE, transitive only, upstream fix required).
+- **Sunset**: remove `.cargo/audit.toml` ignore entry when `cfdp-rs` publishes a release that no longer depends on `paste`, or when a non-`paste` replacement is available.
+
 ## Candidate deviations flagged for future review
 
 These are not deviations today, but they are positions where a future choice may conflict with a cited standard. Tracked here so they are not forgotten.
