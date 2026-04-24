@@ -60,6 +60,7 @@ pub const ROUTER_TO_CFDP_CAP: usize = 256;
 /// Bounded channel capacity: [`ApidRouter`] → rover-forward archive (§5.3).
 pub const ROUTER_TO_ROVER_CAP: usize = 256;
 
+pub mod decoder;
 pub mod demux;
 pub mod framer;
 
