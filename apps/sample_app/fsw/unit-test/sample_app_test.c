@@ -54,6 +54,7 @@ void CFE_EVS_SendEvent(uint16 EventID, uint16 EventType, const char *Spec, ...)
 
 bool CFE_ES_RunLoop(uint32 *RunStatus)
 {
+    (void)RunStatus;
     return (bool)mock();
 }
 
