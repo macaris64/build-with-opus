@@ -1,6 +1,7 @@
 #include "fault_injector.h"
 
 #include <arpa/inet.h>
+#include <netdb.h>
 #include <netinet/in.h>
 #include <sys/socket.h>
 #include <unistd.h>
@@ -208,16 +209,24 @@ bool FaultInjector::Start(const std::string &host, uint16_t port)
         return false;
     }
 
-    struct sockaddr_in dst{};
-    dst.sin_family      = AF_INET;
-    dst.sin_port        = htons(port);
-    if (inet_pton(AF_INET, host.c_str(), &dst.sin_addr) != 1)
+    struct addrinfo hints{};
+    hints.ai_family   = AF_INET;
+    hints.ai_socktype = SOCK_DGRAM;
+
+    const std::string port_str = std::to_string(port);
+    struct addrinfo *res = nullptr;
+    int rc = getaddrinfo(host.c_str(), port_str.c_str(), &hints, &res);
+    if (rc != 0)
     {
-        last_error_ = "invalid host address: " + host;
+        last_error_ = "getaddrinfo(" + host + "): " + gai_strerror(rc);
         close(sock_fd_);
         sock_fd_ = -1;
         return false;
     }
+
+    struct sockaddr_in dst{};
+    std::memcpy(&dst, res->ai_addr, sizeof(dst));
+    freeaddrinfo(res);
 
     /* Connect the UDP socket so send() can be used without a destination.
      * connect() on a UDP socket to a valid loopback address never fails in

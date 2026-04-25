@@ -103,24 +103,26 @@ static void test_spp_header_seq_flags_standalone()
 static void test_spp_encode_packet_drop_length()
 {
     /* Given a packet-drop fault, When encoded,
-     * Then the total length is 16 bytes (6 hdr + 10 user-data). */
+     * Then the total length fills the AOS data field (SPP_MAX_BYTES = 1016)
+     * so that ccsds_wire LengthMismatch check passes (data_len + 7 == buf.len). */
     uint8_t buf[SPP_MAX_BYTES];
     const size_t n = spp_encode_packet_drop(buf, sizeof(buf),
                                              0U,    /* seq */
                                              1U,    /* link_id ORBITER-RELAY */
                                              2500U, /* drop_prob */
                                              60000U);
-    CHECK(n == 16U);
+    CHECK(n == SPP_MAX_BYTES);
 }
 
 static void test_spp_encode_packet_drop_crc_appended()
 {
     /* Given a packet-drop packet, When encoded,
-     * Then the last two bytes are a valid CRC-16 over the 8 preceding user-data bytes. */
+     * Then the CRC-16 at ud[8..9] is valid over the 8 preceding fault-payload bytes.
+     * Payload starts at SPP_FAULT_PAYLOAD_OFFSET (16), after primary + secondary headers. */
     uint8_t buf[SPP_MAX_BYTES];
     spp_encode_packet_drop(buf, sizeof(buf), 0U, 1U, 2500U, 60000U);
 
-    const uint8_t *ud  = buf + 6U;
+    const uint8_t *ud  = buf + SPP_FAULT_PAYLOAD_OFFSET;
     const uint16_t expected = spp_crc16(ud, 8U);
     const uint16_t actual   = (uint16_t)((ud[8] << 8U) | ud[9]);
     CHECK(actual == expected);
@@ -129,30 +131,30 @@ static void test_spp_encode_packet_drop_crc_appended()
 static void test_spp_encode_clock_skew_length()
 {
     /* Given a clock-skew fault, When encoded,
-     * Then total length is 22 bytes (6 hdr + 16 user-data). */
+     * Then total length is SPP_MAX_BYTES (AOS-compatible, fills the data field). */
     uint8_t buf[SPP_MAX_BYTES];
     const size_t n = spp_encode_clock_skew(buf, sizeof(buf),
                                             0U, 0U, 1U,
                                             500,   /* offset_ms */
                                             0,     /* rate_ppm_x1000 */
                                             2U);
-    CHECK(n == 22U);
+    CHECK(n == SPP_MAX_BYTES);
 }
 
 static void test_spp_encode_safe_mode_length()
 {
     /* Given a safe-mode fault, When encoded,
-     * Then total length is 12 bytes (6 hdr + 6 user-data). */
+     * Then total length is SPP_MAX_BYTES (AOS-compatible, fills the data field). */
     uint8_t buf[SPP_MAX_BYTES];
     const size_t n = spp_encode_safe_mode(buf, sizeof(buf),
                                            0U, 0U, 1U, 0x0001U);
-    CHECK(n == 12U);
+    CHECK(n == SPP_MAX_BYTES);
 }
 
 static void test_spp_encode_sensor_noise_length()
 {
     /* Given a sensor-noise fault, When encoded,
-     * Then total length is 26 bytes (6 hdr + 20 user-data). */
+     * Then total length is SPP_MAX_BYTES (AOS-compatible, fills the data field). */
     uint8_t buf[SPP_MAX_BYTES];
     const size_t n = spp_encode_sensor_noise(buf, sizeof(buf),
                                               0U,
@@ -161,7 +163,7 @@ static void test_spp_encode_sensor_noise_length()
                                               1U,        /* noise_model GAUSSIAN */
                                               100, 0,    /* params */
                                               5000U);
-    CHECK(n == 26U);
+    CHECK(n == SPP_MAX_BYTES);
 }
 
 static void test_spp_encode_returns_zero_if_buf_too_small()

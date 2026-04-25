@@ -1,6 +1,28 @@
+# compose.yaml — SAKURA-II full-stack SITL launcher.
+#
+# Usage (single command):
+#   make run          — build all images and start every service
+#   make stop         — stop containers
+#   make logs         — stream combined logs
+#   make clean        — remove containers + volumes
+#
+# Service startup order:
+#   cfs  →  ground_station ─┐
+#        →  gazebo          →  ros2
+#                            └─ fault_injector (after ground_station healthy)
+#
+# Ports exposed on the host:
+#   10000/udp  — ground station UDP telemetry ingress
+#   8080/tcp   — ground station operator UI  (http://localhost:8080)
+
 services:
+
+  # ── cFS stub ──────────────────────────────────────────────────────────────────
+  # Emits 9 "App Initialized" lines (one per orbiter app) and then loops to
+  # keep the container alive for healthcheck polling.  Full cFE runtime
+  # requires submodule init — see HOW_TO_RUN.md §1 and Phase C.
   cfs:
-    image: ubuntu:22.04
+    image: sakura/cfs:local
     container_name: sakura_cfs
     build:
       context: .
@@ -22,30 +44,38 @@ services:
       retries: 10
       start_period: 10s
 
+  # ── Gazebo Harmonic (headless) ────────────────────────────────────────────────
+  # Runs gz sim server with mars_surrogate.sdf (Mars gravity, flat terrain,
+  # rover/UAV/cryobot models).  Plugin .so files are not compiled in this
+  # image so Gazebo emits "plugin not found" warnings and continues without
+  # rover dynamics — full plugin support requires Phase A (HOW_TO_RUN.md §10).
   gazebo:
-    image: ubuntu:22.04
+    image: sakura/gazebo:local
     container_name: sakura_gazebo
     build:
       context: .
       dockerfile: .ci/gazebo.Dockerfile
     volumes:
       - ./simulation:/app/simulation:ro
-    command: >
-      gz sim -r -s /app/simulation/worlds/mars_surrogate.sdf
+    command: gz sim -r -s /app/simulation/worlds/mars_surrogate.sdf
     networks:
       - sakura-net
     depends_on:
       cfs:
         condition: service_healthy
     healthcheck:
-      test: ["CMD-SHELL", "pgrep gz || exit 1"]
+      test: ["CMD-SHELL", "pgrep -f 'gz sim' || exit 1"]
       interval: 5s
       timeout: 5s
-      retries: 6
-      start_period: 15s
+      retries: 12
+      start_period: 30s
 
+  # ── Space ROS 2 ───────────────────────────────────────────────────────────────
+  # Builds the rover workspace with colcon, then launches teleop_node via
+  # rover.launch.py (lifecycle node, starts in unconfigured state).
+  # sim.launch.py (Gazebo bridge) requires ros_gz_bridge — see Phase B.
   ros2:
-    image: spaceros/space-ros:latest
+    image: sakura/ros2:local
     container_name: sakura_ros2
     build:
       context: .
@@ -57,26 +87,32 @@ services:
         source /opt/ros/spaceros/setup.bash &&
         cd /workspace &&
         colcon build --base-paths ros2_ws/src --symlink-install &&
-        source ros2_ws/install/setup.bash &&
-        ros2 launch rover_bringup sim.launch.py headless:=true
+        source install/setup.bash &&
+        ros2 launch rover_bringup rover.launch.py
       "
     environment:
-      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
-      - GAZEBO_MASTER_URI=http://gazebo:11345
+      - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
     networks:
       - sakura-net
     depends_on:
       gazebo:
-        condition: service_healthy
+        condition: service_started
     healthcheck:
-      test: ["CMD-SHELL", "ros2 node list 2>/dev/null | grep -q teleop_node || exit 1"]
+      test: ["CMD-SHELL", "pgrep -f teleop_node || exit 1"]
       interval: 5s
       timeout: 10s
       retries: 12
-      start_period: 30s
+      start_period: 60s
 
+  # ── Rust ground station ───────────────────────────────────────────────────────
+  # Builds the Cargo workspace inside the container (layer-cached after the
+  # first run) and starts the ground station.
+  #
+  # Ports:
+  #   10000/udp — CCSDS AOS frame ingress from cFS / fault_injector
+  #   8080/tcp  — operator UI (all 7 telemetry surfaces + /api/tc)
   ground_station:
-    image: rust:1.77-slim
+    image: sakura/ground_station:local
     container_name: sakura_ground_station
     build:
       context: .
@@ -89,6 +125,7 @@ services:
       "
     ports:
       - "10000:10000/udp"
+      - "8080:8080/tcp"
     networks:
       - sakura-net
     depends_on:
@@ -98,26 +135,27 @@ services:
       test: ["CMD-SHELL", "ss -ulnp | grep -q ':10000' || exit 1"]
       interval: 3s
       timeout: 5s
-      retries: 5
-      start_period: 30s
+      retries: 20
+      start_period: 60s
 
+  # ── Fault injector ────────────────────────────────────────────────────────────
+  # Builds fault_injector_run from source inside Docker (no host build needed),
+  # then sends SCN-OFF-01-clockskew scenario to the ground station.
+  # Runs once (restart: "no") and exits after 30 s of injection.
   fault_injector:
+    image: sakura/fault_injector:local
     container_name: sakura_fault_injector
     build:
       context: .
-      dockerfile: .ci/cfs.Dockerfile
+      dockerfile: .ci/fault_injector.Dockerfile
     volumes:
-      - ./simulation:/app/simulation:ro
-      - ./build:/app/build:ro
+      - ./simulation/scenarios:/app/scenarios:ro
     command: >
-      bash -c "
-        /app/build/simulation/fault_injector/fault_injector_run \
-          ground_station \
-          10000 \
-          /app/simulation/scenarios/SCN-OFF-01-clockskew.yaml \
-          30 &&
-        echo 'fault_injector: SCN-OFF-01-clockskew injected'
-      "
+      fault_injector_run
+        ground_station
+        10000
+        /app/scenarios/SCN-OFF-01-clockskew.yaml
+        30
     networks:
       - sakura-net
     depends_on:

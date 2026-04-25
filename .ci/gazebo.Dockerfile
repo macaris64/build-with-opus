@@ -21,14 +21,16 @@ RUN apt-get update -q && \
     && rm -rf /var/lib/apt/lists/*
 
 # Add OSRF Gazebo Harmonic apt repository.
+# NOTE: the echo must be a single line — a multi-line echo with indented
+# continuation puts leading spaces into the URI, which APT silently ignores,
+# making gz-harmonic unlocalizable.
 RUN curl -fsSL https://packages.osrfoundation.org/gazebo.gpg \
         -o /usr/share/keyrings/pkgs-osrf-archive-keyring.gpg && \
-    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] \
-        http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" \
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/pkgs-osrf-archive-keyring.gpg] http://packages.osrfoundation.org/gazebo/ubuntu-stable $(lsb_release -cs) main" \
         > /etc/apt/sources.list.d/gazebo-stable.list && \
     apt-get update -q && \
     apt-get install -y --no-install-recommends \
-        gz-sim8 \
+        gz-harmonic \
     && rm -rf /var/lib/apt/lists/*
 
 RUN mkdir -p /app/simulation

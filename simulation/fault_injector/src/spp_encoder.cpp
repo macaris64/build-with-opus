@@ -25,11 +25,29 @@ uint16_t spp_crc16(const uint8_t *data, size_t len)
     return crc;
 }
 
+/* Write the mandatory 10-byte secondary header at buf[0..9].
+ * Wire layout (ccsds_wire secondary.rs §2.5):
+ *   [0]    CUC P-Field  = 0x2F
+ *   [1..4] CUC coarse time (4 B BE)
+ *   [5..6] CUC fine time   (2 B BE)
+ *   [7..8] FuncCode (u16 BE, nonzero — 0x0100 = HK telemetry)
+ *   [9]    InstanceId  (u8, nonzero — 0x01) */
+static void spp_encode_secondary_header(uint8_t *buf)
+{
+    buf[0] = 0x2FU;                 /* CUC P-Field */
+    buf[1] = 0x00U; buf[2] = 0x00U; buf[3] = 0x00U; buf[4] = 0x00U; /* coarse */
+    buf[5] = 0x00U; buf[6] = 0x00U;                                   /* fine   */
+    buf[7] = 0x01U; buf[8] = 0x00U; /* FuncCode = 0x0100 (nonzero)   */
+    buf[9] = 0x01U;                 /* InstanceId = 0x01 (nonzero)    */
+}
+
 void spp_encode_header(uint8_t *buf, uint16_t apid,
                        uint16_t seq_count, uint16_t data_len)
 {
-    /* Byte 0: version=000, type=0 (TM), sec_hdr_flag=0, apid[10:8] */
-    buf[0] = (uint8_t)((apid >> 8U) & 0x07U);
+    /* Byte 0: version=000, type=0 (TM), sec_hdr_flag=1, apid[10:8]
+     * sec_hdr_flag MUST be 1 (bit 3); ccsds_wire::PrimaryHeader::decode
+     * checks the nibble (version|sec_hdr) == 0b0001 and rejects otherwise. */
+    buf[0] = (uint8_t)(0x08U | ((apid >> 8U) & 0x07U));
 
     /* Byte 1: apid[7:0] */
     buf[1] = (uint8_t)(apid & 0xFFU);
@@ -67,24 +85,21 @@ size_t spp_encode_packet_drop(uint8_t *out,   size_t out_cap,
                                uint16_t drop_probability_x10000,
                                uint32_t duration_ms)
 {
-    const size_t total = 6U + PAYLOAD_PACKET_DROP;  /* 16 bytes */
-    if (out_cap < total) { return 0U; }
+    if (out_cap < SPP_MAX_BYTES) { return 0U; }
 
-    /* data_len = PAYLOAD_PACKET_DROP - 1 = 9 */
-    spp_encode_header(out, APID_PACKET_DROP, seq_count,
-                      (uint16_t)(PAYLOAD_PACKET_DROP - 1U));
+    spp_encode_header(out, APID_PACKET_DROP, seq_count, SPP_DATA_LENGTH);
+    spp_encode_secondary_header(out + 6U);
 
-    uint8_t *ud = out + 6U;
+    uint8_t *ud = out + SPP_FAULT_PAYLOAD_OFFSET;
     ud[0] = link_id;
     ud[1] = 0x00U;  /* reserved */
     put_be16(&ud[2], drop_probability_x10000);
     put_be32(&ud[4], duration_ms);
 
-    /* CRC over user-data bytes [0..7] (before the CRC field) */
     const uint16_t crc = spp_crc16(ud, 8U);
     put_be16(&ud[8], crc);
 
-    return total;
+    return SPP_MAX_BYTES;
 }
 
 size_t spp_encode_clock_skew(uint8_t *out,   size_t out_cap,
@@ -95,14 +110,12 @@ size_t spp_encode_clock_skew(uint8_t *out,   size_t out_cap,
                               int32_t  rate_ppm_x1000,
                               uint32_t duration_s)
 {
-    const size_t total = 6U + PAYLOAD_CLOCK_SKEW;  /* 22 bytes */
-    if (out_cap < total) { return 0U; }
+    if (out_cap < SPP_MAX_BYTES) { return 0U; }
 
-    /* data_len = PAYLOAD_CLOCK_SKEW - 1 = 15 */
-    spp_encode_header(out, APID_CLOCK_SKEW, seq_count,
-                      (uint16_t)(PAYLOAD_CLOCK_SKEW - 1U));
+    spp_encode_header(out, APID_CLOCK_SKEW, seq_count, SPP_DATA_LENGTH);
+    spp_encode_secondary_header(out + 6U);
 
-    uint8_t *ud = out + 6U;
+    uint8_t *ud = out + SPP_FAULT_PAYLOAD_OFFSET;
     ud[0] = asset_class;
     ud[1] = instance_id;
     put_be32(&ud[2],  (uint32_t)offset_ms);
@@ -112,7 +125,7 @@ size_t spp_encode_clock_skew(uint8_t *out,   size_t out_cap,
     const uint16_t crc = spp_crc16(ud, 14U);
     put_be16(&ud[14], crc);
 
-    return total;
+    return SPP_MAX_BYTES;
 }
 
 size_t spp_encode_safe_mode(uint8_t *out,    size_t out_cap,
@@ -121,14 +134,12 @@ size_t spp_encode_safe_mode(uint8_t *out,    size_t out_cap,
                              uint8_t  instance_id,
                              uint16_t trigger_reason_code)
 {
-    const size_t total = 6U + PAYLOAD_SAFE_MODE;  /* 12 bytes */
-    if (out_cap < total) { return 0U; }
+    if (out_cap < SPP_MAX_BYTES) { return 0U; }
 
-    /* data_len = PAYLOAD_SAFE_MODE - 1 = 5 */
-    spp_encode_header(out, APID_SAFE_MODE, seq_count,
-                      (uint16_t)(PAYLOAD_SAFE_MODE - 1U));
+    spp_encode_header(out, APID_SAFE_MODE, seq_count, SPP_DATA_LENGTH);
+    spp_encode_secondary_header(out + 6U);
 
-    uint8_t *ud = out + 6U;
+    uint8_t *ud = out + SPP_FAULT_PAYLOAD_OFFSET;
     ud[0] = asset_class;
     ud[1] = instance_id;
     put_be16(&ud[2], trigger_reason_code);
@@ -136,7 +147,7 @@ size_t spp_encode_safe_mode(uint8_t *out,    size_t out_cap,
     const uint16_t crc = spp_crc16(ud, 4U);
     put_be16(&ud[4], crc);
 
-    return total;
+    return SPP_MAX_BYTES;
 }
 
 size_t spp_encode_sensor_noise(uint8_t *out,  size_t out_cap,
@@ -149,14 +160,12 @@ size_t spp_encode_sensor_noise(uint8_t *out,  size_t out_cap,
                                 int32_t  noise_param_2,
                                 uint32_t duration_ms)
 {
-    const size_t total = 6U + PAYLOAD_SENSOR_NOISE;  /* 26 bytes */
-    if (out_cap < total) { return 0U; }
+    if (out_cap < SPP_MAX_BYTES) { return 0U; }
 
-    /* data_len = PAYLOAD_SENSOR_NOISE - 1 = 19 */
-    spp_encode_header(out, APID_SENSOR_NOISE, seq_count,
-                      (uint16_t)(PAYLOAD_SENSOR_NOISE - 1U));
+    spp_encode_header(out, APID_SENSOR_NOISE, seq_count, SPP_DATA_LENGTH);
+    spp_encode_secondary_header(out + 6U);
 
-    uint8_t *ud = out + 6U;
+    uint8_t *ud = out + SPP_FAULT_PAYLOAD_OFFSET;
     ud[0] = asset_class;
     ud[1] = instance_id;
     put_be16(&ud[2],  sensor_index);
@@ -169,5 +178,5 @@ size_t spp_encode_sensor_noise(uint8_t *out,  size_t out_cap,
     const uint16_t crc = spp_crc16(ud, 18U);
     put_be16(&ud[18], crc);
 
-    return total;
+    return SPP_MAX_BYTES;
 }
