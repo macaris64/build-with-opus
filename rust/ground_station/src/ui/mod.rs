@@ -160,6 +160,10 @@ pub struct TimeAuthority {
     pub drift_budget_us_per_day: f64,
     /// Milliseconds elapsed since the last time-synchronisation packet.
     pub sync_packet_age_ms: u64,
+    /// Set to `true` when APID 0x541 (clock-skew) has been received and rejected
+    /// on the RF path (Q-F2, SYS-REQ-0041). Rendered as a "suspect" badge in the
+    /// operator UI per `docs/architecture/06-ground-segment-rust.md` §638.
+    pub time_suspect_seen: bool,
 }
 
 impl Default for TimeAuthority {
@@ -168,6 +172,7 @@ impl Default for TimeAuthority {
             tai_offset_s: 37,
             drift_budget_us_per_day: 83.3,
             sync_packet_age_ms: 0,
+            time_suspect_seen: false,
         }
     }
 }

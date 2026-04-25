@@ -459,6 +459,36 @@ mod tests {
     }
 
     // -----------------------------------------------------------------------
+    // Phase 40 regression: APID 0x541 must still be rejected after badge wiring
+    //
+    // Given  an ApidRouter
+    // When   a 0x541 SPP is routed (same as Phase 39 clock-skew injection)
+    // Then   Route::Rejected { ForbiddenFaultInjectApid } is returned
+    // AND    forbidden_apid_seen_total(0x541) == 1
+    // NOTE:  Router itself is stateless re: the badge; badge update happens in
+    //        main.rs Stage 4 (ui_state_router.time_auth.try_write). This test
+    //        confirms the Q-F2 rejection path is undisturbed by Phase 40 changes.
+    // -----------------------------------------------------------------------
+    #[test]
+    fn phase40_clock_skew_apid_still_rejected_after_badge_wiring() {
+        let bytes = make_pkt_bytes(0x0541);
+        let pkt = SpacePacket::parse(&bytes).unwrap();
+        let mut router = ApidRouter::new();
+        assert_eq!(
+            router.route(0, &pkt),
+            Route::Rejected {
+                reason: RejectReason::ForbiddenFaultInjectApid,
+            },
+            "APID 0x541 must remain rejected (Q-F2) after Phase 40 badge wiring",
+        );
+        assert_eq!(
+            router.forbidden_apid_seen_total(0x541),
+            1,
+            "forbidden counter must be 1 after one rejection",
+        );
+    }
+
+    // -----------------------------------------------------------------------
     // Phase 39 integration: fault_injector ICD-compliant clock-skew SPP
     // rejected by ApidRouter on any RF VC (wires the Phase 25 router into
     // the Phase 39 fault-inject pipeline per DoD §3).
