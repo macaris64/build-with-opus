@@ -1,0 +1,9 @@
+#!/bin/bash
+# Stub cFS core-cpu1 for SITL smoke-testing without NASA submodules.
+# Emits 9 "App Initialized" lines (one per app in cfe_es_startup.scr)
+# then loops to keep the container alive for healthcheck polling.
+for i in 1 2 3 4 5 6 7 8 9; do
+  echo "App Initialized"
+done
+echo "cFS stub: all apps registered — waiting for shutdown"
+while true; do sleep 60; done
