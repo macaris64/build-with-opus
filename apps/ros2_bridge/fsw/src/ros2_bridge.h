@@ -28,22 +28,42 @@
 #define ROS2_BRIDGE_ROS_HOST       "127.0.0.1"
 #define ROS2_BRIDGE_APID_MIN       0x300U          /* first rover APID */
 #define ROS2_BRIDGE_APID_MAX       0x43FU          /* last rover APID */
+#define ROS2_BRIDGE_LINK_STATE_APID    0x129U      /* Prx-1 link-state SPP from ROS 2 */
+#define ROS2_BRIDGE_FLEET_MONITOR_APID 0x160U      /* fleet_monitor heartbeat from ROS 2 */
 #define ROS2_BRIDGE_PIPE_DEPTH     20U
 #define ROS2_BRIDGE_FRAME_BUF_SIZE 1024U           /* max UDP datagram; MISRA Rule 18.8 */
 
+/* ── Command codes (TC MID: ROS2_BRIDGE_CMD_MID = 0x1928) ────────────────── */
+#define ROS2_BRIDGE_NOOP_CC  ((CFE_MSG_FcnCode_t)0U)
+#define ROS2_BRIDGE_RESET_CC ((CFE_MSG_FcnCode_t)1U)
+
+/* ── HK telemetry packet (APID 0x128, MID ROS2_BRIDGE_HK_MID = 0x0928) ───── */
+typedef struct {
+    CFE_MSG_Message_t Header;
+    uint32            PacketsRouted;
+    uint32            ApidRejects;
+    uint32            TcForwarded;
+    uint32            UptimeSeconds;
+    uint32            CmdCounter;
+    uint32            ErrCounter;
+} ROS2_BRIDGE_HkTlm_t;
+
 /* ── Application state ─────────────────────────────────────────────────────── */
 typedef struct {
-    CFE_EVS_BinFilter_t EventFilters[ROS2_BRIDGE_EVT_COUNT];
-    CFE_SB_PipeId_t     CmdPipe;
-    osal_id_t           RxSockId;      /* receives HK SPPs from ROS 2 */
-    OS_SockAddr_t       RxBindAddr;
-    osal_id_t           TxSockId;      /* sends TC packets to ROS 2 */
-    OS_SockAddr_t       TxRemoteAddr;
-    uint32              PacketsRouted;
-    uint32              ApidRejects;
-    uint32              TcForwarded;
-    uint32              RunStatus;
-    uint32              UptimeSeconds;
+    CFE_EVS_BinFilter_t  EventFilters[ROS2_BRIDGE_EVT_COUNT];
+    CFE_SB_PipeId_t      CmdPipe;
+    osal_id_t            RxSockId;       /* receives HK SPPs from ROS 2 */
+    OS_SockAddr_t        RxBindAddr;
+    osal_id_t            TxSockId;       /* sends TC packets to ROS 2 */
+    OS_SockAddr_t        TxRemoteAddr;
+    uint32               PacketsRouted;
+    uint32               ApidRejects;
+    uint32               TcForwarded;
+    uint32               CmdCounter;
+    uint32               ErrCounter;
+    uint32               RunStatus;
+    uint32               UptimeSeconds;
+    ROS2_BRIDGE_HkTlm_t HkTlm;
 } ROS2_BRIDGE_AppData_t;
 
 /* ── Entry point ──────────────────────────────────────────────────────────── */

@@ -55,9 +55,14 @@
 #define SIM_ADAPTER_CMD_MID      0x1D00U   /* 0x1800 | 0x500 */
 #define SIM_ADAPTER_HK_MID       0x0D01U   /* 0x0800 | 0x501 */
 
-/* ── ros2_bridge MIDs (APID 0x128 in orbiter TM block — free slot) ──────────── */
-#define ROS2_BRIDGE_HK_MID       0x0928U   /* 0x0800 | 0x128 */
-#define ROS2_BRIDGE_CMD_MID      0x1928U   /* 0x1800 | 0x128 */
+/* ── ros2_bridge MIDs (APID 0x128–0x129 in orbiter TM block) ────────────────── */
+#define ROS2_BRIDGE_HK_MID         0x0928U   /* 0x0800 | 0x128 — bridge packet counters HK */
+#define ROS2_BRIDGE_CMD_MID        0x1928U   /* 0x1800 | 0x128 */
+#define ROS_GND_LINK_STATE_MID     0x0929U   /* 0x0800 | 0x129 — Prx-1 session state via ROS 2 */
+
+/* ── fleet_monitor MIDs (APID 0x160, reserved orbiter TM block) ─────────────── */
+#define FLEET_MONITOR_HK_MID       0x0960U   /* 0x0800 | 0x160 — intra-fleet DDS heartbeat */
+#define FLEET_MONITOR_CMD_MID      0x1960U   /* 0x1800 | 0x160 */
 
 /* ── Fault-injection SPP APIDs (sideband only; ICD-sim-fsw.md §2) ───────────
  * These are raw APID values (not cFE MIDs) used by simulation/fault_injector.

@@ -1,7 +1,10 @@
 #pragma once
 
 #include <cstdint>
+#include <string>
 #include <vector>
+
+#include <netinet/in.h>
 
 namespace rover_common
 {
@@ -45,6 +48,29 @@ public:
 private:
     uint16_t apid_;       /* 11-bit APID, stored pre-masked */
     uint16_t seq_count_;  /* 14-bit CCSDS sequence counter  */
+};
+
+/* UdpGateway — non-blocking UDP sender for rover HK SPP forwarding.
+ *
+ * Constructed with a destination host/port; wraps a SOCK_DGRAM|SOCK_NONBLOCK
+ * socket connected at construction time.  send() is non-blocking: EAGAIN is
+ * silenced so a busy ground loop never blocks a timer callback.
+ */
+class UdpGateway
+{
+public:
+    UdpGateway(const std::string & host, uint16_t port) noexcept;
+    ~UdpGateway() noexcept;
+
+    /* Non-copyable, non-movable (owns the socket fd). */
+    UdpGateway(const UdpGateway &)            = delete;
+    UdpGateway & operator=(const UdpGateway &) = delete;
+
+    /* Returns false only on hard errors (socket invalid, or send fails beyond EAGAIN). */
+    bool send(const std::vector<uint8_t> & data) noexcept;
+
+private:
+    int sock_fd_{-1};
 };
 
 }  // namespace rover_common

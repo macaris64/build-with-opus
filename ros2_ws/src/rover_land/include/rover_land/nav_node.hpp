@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 
 #include <geometry_msgs/msg/twist.hpp>
@@ -8,6 +9,7 @@
 #include <rclcpp_lifecycle/lifecycle_node.hpp>
 
 #include "rover_common/lifecycle_base.hpp"
+#include "rover_common/msg/hk.hpp"
 #include "rover_common/tm_bridge.hpp"
 
 namespace rover_land
@@ -31,9 +33,13 @@ private:
     void odom_callback(const nav_msgs::msg::Odometry::SharedPtr msg);
 
     rclcpp_lifecycle::LifecyclePublisher<geometry_msgs::msg::Twist>::SharedPtr cmd_vel_pub_;
+    rclcpp_lifecycle::LifecyclePublisher<rover_common::msg::Hk>::SharedPtr     land_hk_pub_;
     rclcpp::Subscription<nav_msgs::msg::Odometry>::SharedPtr odom_sub_;
     rclcpp::TimerBase::SharedPtr hk_timer_;
-    std::unique_ptr<rover_common::TmBridge> tm_bridge_;
+    std::unique_ptr<rover_common::TmBridge>   tm_bridge_;
+    std::unique_ptr<rover_common::UdpGateway> udp_gw_;
+    nav_msgs::msg::Odometry::SharedPtr        latest_odom_;
+    uint32_t                                  hk_seq_{0U};
 };
 
 }  // namespace rover_land

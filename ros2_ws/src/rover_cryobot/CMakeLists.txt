@@ -49,6 +49,8 @@ ament_target_dependencies(rover_cryobot_component
 # parent install include dir is not added by ament_target_dependencies when the
 # modern target path is taken — add it explicitly so rover_common/*.hpp resolves.
 target_include_directories(rover_cryobot_component PUBLIC ${rover_common_INCLUDE_DIRS})
+# Wire rosidl-generated message typesupport (rover_common::msg::Hk).
+rosidl_target_interfaces(rover_cryobot_component rover_common "rosidl_typesupport_cpp")
 
 rclcpp_components_register_node(rover_cryobot_component
     PLUGIN "rover_cryobot::DrillCtrlNode"

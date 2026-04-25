@@ -156,6 +156,30 @@ static int32 ORBITER_COMM_Init(void)
         return status;
     }
 
+    /* Subscribe to ros2_bridge self-HK (APID 0x128) for VC0 downlink. */
+    status = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(ROS2_BRIDGE_HK_MID),
+                              ORBITER_COMM_Data.CmdPipe);
+    if (status != CFE_SUCCESS)
+    {
+        return status;
+    }
+
+    /* Subscribe to Proximity-1 link-state (APID 0x129) for VC0 downlink. */
+    status = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(ROS_GND_LINK_STATE_MID),
+                              ORBITER_COMM_Data.CmdPipe);
+    if (status != CFE_SUCCESS)
+    {
+        return status;
+    }
+
+    /* Subscribe to fleet_monitor DDS heartbeat (APID 0x160) for VC0 downlink. */
+    status = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(FLEET_MONITOR_HK_MID),
+                              ORBITER_COMM_Data.CmdPipe);
+    if (status != CFE_SUCCESS)
+    {
+        return status;
+    }
+
     /* Initialise application counters */
     ORBITER_COMM_Data.CmdCounter      = 0U;
     ORBITER_COMM_Data.ErrCounter      = 0U;
@@ -227,6 +251,9 @@ static void ORBITER_COMM_ProcessCommandPacket(const CFE_SB_Buffer_t *SBBufPtr)
         case ROVER_LAND_HK_MID:
         case ROVER_UAV_HK_MID:
         case ROVER_CRYOBOT_HK_MID:
+        case ROS2_BRIDGE_HK_MID:
+        case ROS_GND_LINK_STATE_MID:
+        case FLEET_MONITOR_HK_MID:
             ORBITER_COMM_ForwardRoverHk(SBBufPtr);
             break;
 
@@ -424,7 +451,13 @@ static void ORBITER_COMM_ForwardRoverHk(const CFE_SB_Buffer_t *SBBufPtr)
 {
     if (ORBITER_COMM_LinkState == ORBITER_COMM_LINK_AOS)
     {
-        ORBITER_COMM_EmitAosFrame((const uint8 *)SBBufPtr,
-                                  (uint16)sizeof(CFE_SB_Buffer_t));
+        CFE_MSG_Size_t MsgSize = 0U;
+        (void)CFE_MSG_GetSize(&SBBufPtr->Msg, &MsgSize);
+        /* Clamp to AOS frame limit; EmitAosFrame performs its own bounds guard. */
+        if (MsgSize > (CFE_MSG_Size_t)ORBITER_COMM_AOS_FRAME_LEN)
+        {
+            MsgSize = (CFE_MSG_Size_t)ORBITER_COMM_AOS_FRAME_LEN;
+        }
+        ORBITER_COMM_EmitAosFrame((const uint8 *)SBBufPtr, (uint16)MsgSize);
     }
 }

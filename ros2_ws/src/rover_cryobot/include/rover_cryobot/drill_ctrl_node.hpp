@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 
 #include <rclcpp/rclcpp.hpp>
@@ -7,6 +8,8 @@
 #include <std_msgs/msg/u_int8_multi_array.hpp>
 
 #include "rover_common/lifecycle_base.hpp"
+#include "rover_common/msg/hk.hpp"
+#include "rover_common/tm_bridge.hpp"
 #include "rover_cryobot/tether_client.hpp"
 
 namespace rover_cryobot
@@ -30,8 +33,12 @@ private:
     void drill_cmd_callback(const std_msgs::msg::UInt8MultiArray::SharedPtr msg);
 
     rclcpp::Subscription<std_msgs::msg::UInt8MultiArray>::SharedPtr drill_cmd_sub_;
+    rclcpp_lifecycle::LifecyclePublisher<rover_common::msg::Hk>::SharedPtr cryo_hk_pub_;
     rclcpp::TimerBase::SharedPtr hk_timer_;
-    std::unique_ptr<TetherClient> tether_client_;
+    std::unique_ptr<TetherClient>               tether_client_;
+    std::unique_ptr<rover_common::TmBridge>     tm_bridge_;
+    std::unique_ptr<rover_common::UdpGateway>   udp_gw_;
+    uint32_t                                    hk_seq_{0U};
 };
 
 }  // namespace rover_cryobot

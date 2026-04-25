@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstdint>
 #include <memory>
 
 #include <nav_msgs/msg/odometry.hpp>
@@ -28,12 +29,16 @@ public:
 
 private:
     void inner_loop_callback();
+    void hk_timer_callback();
     void imu_callback(const sensor_msgs::msg::Imu::SharedPtr msg);
 
     rclcpp_lifecycle::LifecyclePublisher<nav_msgs::msg::Odometry>::SharedPtr state_est_pub_;
     rclcpp::Subscription<sensor_msgs::msg::Imu>::SharedPtr imu_sub_;
     rclcpp::TimerBase::SharedPtr inner_loop_timer_;
-    std::unique_ptr<rover_common::TmBridge> tm_bridge_;
+    rclcpp::TimerBase::SharedPtr hk_timer_;
+    std::unique_ptr<rover_common::TmBridge>   tm_bridge_;
+    std::unique_ptr<rover_common::UdpGateway> udp_gw_;
+    sensor_msgs::msg::Imu::SharedPtr          latest_imu_;
 };
 
 }  // namespace rover_uav

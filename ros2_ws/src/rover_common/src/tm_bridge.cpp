@@ -1,6 +1,10 @@
 #include "rover_common/tm_bridge.hpp"
 
+#include <arpa/inet.h>
+#include <cerrno>
 #include <cstddef>
+#include <sys/socket.h>
+#include <unistd.h>
 
 namespace rover_common
 {
@@ -86,6 +90,54 @@ std::vector<uint8_t> TmBridge::pack_hk(
 void TmBridge::reset_seq(uint16_t to) noexcept
 {
     seq_count_ = static_cast<uint16_t>(to & SEQ_COUNT_MASK);
+}
+
+// ── UdpGateway ────────────────────────────────────────────────────────────────
+
+UdpGateway::UdpGateway(const std::string & host, uint16_t port) noexcept
+{
+    // SOCK_NONBLOCK: callback must never block (ros2-nodes rule).
+    sock_fd_ = ::socket(AF_INET, SOCK_DGRAM | SOCK_NONBLOCK, 0);
+    if (sock_fd_ < 0) {
+        return;
+    }
+
+    struct sockaddr_in addr{};
+    addr.sin_family = AF_INET;
+    addr.sin_port   = htons(port);
+    if (::inet_pton(AF_INET, host.c_str(), &addr.sin_addr) <= 0) {
+        ::close(sock_fd_);
+        sock_fd_ = -1;
+        return;
+    }
+
+    // connect() on a UDP socket stores the peer address; allows plain send().
+    if (::connect(sock_fd_,
+                  reinterpret_cast<const struct sockaddr *>(&addr),
+                  sizeof(addr)) < 0) {
+        ::close(sock_fd_);
+        sock_fd_ = -1;
+    }
+}
+
+UdpGateway::~UdpGateway() noexcept
+{
+    if (sock_fd_ >= 0) {
+        ::close(sock_fd_);
+    }
+}
+
+bool UdpGateway::send(const std::vector<uint8_t> & data) noexcept
+{
+    if (sock_fd_ < 0 || data.empty()) {
+        return false;
+    }
+    const ssize_t sent = ::send(sock_fd_, data.data(), data.size(), 0);
+    if (sent >= 0) {
+        return true;
+    }
+    // EAGAIN/EWOULDBLOCK: non-blocking send buffer full — acceptable, not an error.
+    return (errno == EAGAIN || errno == EWOULDBLOCK);
 }
 
 }  // namespace rover_common

@@ -76,10 +76,14 @@ Reserved per orbiter application. As `apps/orbiter_*` modules come online, add r
 | `0x110` | `orbiter_adcs` | Attitude HK: current + target quaternion, counters | TBR |
 | `0x111` | `orbiter_adcs` | Wheel telemetry: RWA speed array (stub zeros; live data Phase 35 via `mcu_rwa_gw`) | TBR |
 | `0x112`–`0x11F` | `orbiter_adcs` | Reserved for future ADCS telemetry streams | — |
-| `0x120`–`0x12F` | `orbiter_comm` | Comm stack status, link budget | TBR |
+| `0x120`–`0x127` | `orbiter_comm` | Comm stack status, link budget | TBR |
+| `0x128` | `ros2_bridge` | Bridge HK: PacketsRouted, ApidRejects, TcForwarded, UptimeSeconds, CmdCounter, ErrCounter | — |
+| `0x129` | `ros2_bridge` | Proximity-1 link-state TM: proxied from ROS 2 `LinkState.msg` via `TmBridge` | — |
+| `0x12A`–`0x12F` | `orbiter_comm` | Reserved for future comm telemetry | — |
 | `0x130`–`0x13F` | `orbiter_power` | EPS telemetry (via MCU gateway) | TBR |
 | `0x140`–`0x15F` | `orbiter_payload` | Science payload TM | TBR |
-| `0x160`–`0x17F` | *reserved* | Unallocated; for future orbiter apps | — |
+| `0x160` | `fleet_monitor` | Intra-fleet DDS heartbeat: per-rover health bitmask and heartbeat ages | — |
+| `0x161`–`0x17F` | *reserved* | Unallocated; for future orbiter apps | — |
 
 ## Orbiter TC Sub-Allocation (0x180–0x1FF)
 

@@ -31,6 +31,8 @@ ament_target_dependencies(nav_node_component
 # modern target path is taken — add it explicitly so rover_common/*.hpp resolves.
 target_include_directories(nav_node_component PUBLIC ${rover_common_INCLUDE_DIRS})
 target_link_libraries(nav_node_component ${rover_common_LIBRARIES})
+# Wire rosidl-generated message typesupport (rover_common::msg::Hk).
+rosidl_target_interfaces(nav_node_component rover_common "rosidl_typesupport_cpp")
 
 rclcpp_components_register_node(nav_node_component
     PLUGIN "rover_land::NavNode"

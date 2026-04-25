@@ -194,6 +194,69 @@ pub struct TcSubmitResponse {
     pub accepted: bool,
 }
 
+// ── Link health DTOs (Phases 5–7) ────────────────────────────────────────────
+
+/// Parsed view of the `ros2_bridge` HK packet (APID 0x128, cFS ↔ Space ROS link).
+///
+/// Payload layout: 6 × uint32 in host byte order (LE on x86), starting at
+/// `data[0]` after the 16-byte CCSDS header is stripped by the ingest sink.
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct CfsRosLinkDto {
+    pub packets_routed: u32,
+    pub apid_rejects:   u32,
+    pub tc_forwarded:   u32,
+    pub uptime_s:       u32,
+    pub cmd_counter:    u32,
+    pub err_counter:    u32,
+    /// UTC ISO-8601 timestamp of the most recent HK frame, or `None` if no
+    /// frame has been received since startup.
+    pub last_hk_utc: Option<String>,
+}
+
+/// Parsed view of the Proximity-1 link-state packet (APID 0x129, ROS 2 ↔ Ground).
+///
+/// Payload layout (10 B, big-endian):
+///   byte 0:    `session_active` (0 = false, 1 = true)
+///   byte 1:    `signal_strength` (0–255)
+///   bytes 2-9: `last_contact_s` (f64 BE, UNIX seconds)
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct RosGroundLinkDto {
+    pub session_active:  bool,
+    pub signal_strength: u8,
+    pub last_contact_s:  f64,
+    /// UTC ISO-8601 timestamp of the most recent HK frame.
+    pub last_hk_utc: Option<String>,
+}
+
+/// Parsed view of the `fleet_monitor` heartbeat packet (APID 0x160, DDS intra-fleet).
+///
+/// Payload layout (13 B, big-endian):
+///   byte 0:     `health_mask` (bit 0=land, bit 1=uav, bit 2=cryo)
+///   bytes 1-4:  `land_age_ms`  (uint32 BE)
+///   bytes 5-8:  `uav_age_ms`   (uint32 BE)
+///   bytes 9-12: `cryo_age_ms`  (uint32 BE)
+#[derive(Debug, Clone, Serialize, Deserialize, Default)]
+pub struct FleetDdsLinkDto {
+    pub health_mask: u8,
+    pub land_age_ms: u32,
+    pub uav_age_ms:  u32,
+    pub cryo_age_ms: u32,
+    /// UTC ISO-8601 timestamp of the most recent HK frame.
+    pub last_hk_utc: Option<String>,
+}
+
+/// One entry in the per-link freshness summary embedded in the WS snapshot
+/// (Phase 8).
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct LinkHealthSnapshot {
+    /// Human-readable link identifier (e.g. `"cfs-ros"`, `"fleet-dds"`).
+    pub link:        String,
+    pub apid:        u16,
+    /// UTC ISO-8601 timestamp of the latest received frame, or `None` if no
+    /// frame has been received since startup.
+    pub last_hk_utc: Option<String>,
+}
+
 // ── Shared state ──────────────────────────────────────────────────────────────
 
 /// Shared mutable state backing all seven UI surfaces.
@@ -283,6 +346,106 @@ async fn get_rover(State(state): State<Arc<UiState>>) -> Json<Vec<HkSnapshot>> {
     Json(rover)
 }
 
+// ── Link health helpers ───────────────────────────────────────────────────────
+
+/// Return the most recent [`HkFrame`] for `apid`, or `None` if unseen.
+fn latest_hk_frame(hk: &[HkSnapshot], apid: u16) -> Option<&HkFrame> {
+    hk.iter().find(|s| s.apid == apid).and_then(|s| s.frames.last())
+}
+
+/// Read a little-endian `u32` from `data[offset..offset+4]`, returning 0 on
+/// under-run (cFS HK payloads are host-byte-order / LE on x86).
+fn read_le_u32(data: &[u8], offset: usize) -> u32 {
+    data.get(offset..offset.saturating_add(4))
+        .and_then(|s| <[u8; 4]>::try_from(s).ok())
+        .map_or(0, u32::from_le_bytes)
+}
+
+/// Read a big-endian `u32` from `data[offset..offset+4]`, returning 0 on
+/// under-run (ROS 2 `TmBridge` payloads are always big-endian).
+fn read_be_u32(data: &[u8], offset: usize) -> u32 {
+    data.get(offset..offset.saturating_add(4))
+        .and_then(|s| <[u8; 4]>::try_from(s).ok())
+        .map_or(0, u32::from_be_bytes)
+}
+
+/// Read a big-endian `f64` from `data[offset..offset+8]`, returning 0.0 on
+/// under-run.
+fn read_be_f64(data: &[u8], offset: usize) -> f64 {
+    data.get(offset..offset.saturating_add(8))
+        .and_then(|s| <[u8; 8]>::try_from(s).ok())
+        .map_or(0.0, f64::from_be_bytes)
+}
+
+/// Build the per-link freshness summary for the three comm links.
+fn build_links_health(hk: &[HkSnapshot]) -> Vec<LinkHealthSnapshot> {
+    const LINKS: [(u16, &str); 3] = [
+        (0x128, "cfs-ros"),
+        (0x129, "ros-ground"),
+        (0x160, "fleet-dds"),
+    ];
+    LINKS.iter().map(|&(apid, name)| LinkHealthSnapshot {
+        link:        name.to_owned(),
+        apid,
+        last_hk_utc: latest_hk_frame(hk, apid).map(|f| f.timestamp_utc.clone()),
+    }).collect()
+}
+
+/// `GET /api/link/cfs-ros` — returns cFS ↔ Space ROS link health derived from
+/// the `ros2_bridge` HK packet (APID 0x128).
+async fn get_cfs_ros_link(State(state): State<Arc<UiState>>) -> Json<CfsRosLinkDto> {
+    let hk = state.hk.read().await;
+    Json(if let Some(frame) = latest_hk_frame(&hk, 0x128) {
+        let d = &frame.data;
+        CfsRosLinkDto {
+            packets_routed: read_le_u32(d, 0),
+            apid_rejects:   read_le_u32(d, 4),
+            tc_forwarded:   read_le_u32(d, 8),
+            uptime_s:       read_le_u32(d, 12),
+            cmd_counter:    read_le_u32(d, 16),
+            err_counter:    read_le_u32(d, 20),
+            last_hk_utc:    Some(frame.timestamp_utc.clone()),
+        }
+    } else {
+        CfsRosLinkDto::default()
+    })
+}
+
+/// `GET /api/link/ros-ground` — returns Space ROS ↔ Ground link health derived
+/// from the Proximity-1 link-state packet (APID 0x129).
+async fn get_ros_ground_link(State(state): State<Arc<UiState>>) -> Json<RosGroundLinkDto> {
+    let hk = state.hk.read().await;
+    Json(if let Some(frame) = latest_hk_frame(&hk, 0x129) {
+        let d = &frame.data;
+        RosGroundLinkDto {
+            session_active:  d.first().copied().unwrap_or(0) != 0,
+            signal_strength: d.get(1).copied().unwrap_or(0),
+            last_contact_s:  read_be_f64(d, 2),
+            last_hk_utc:     Some(frame.timestamp_utc.clone()),
+        }
+    } else {
+        RosGroundLinkDto::default()
+    })
+}
+
+/// `GET /api/link/fleet-dds` — returns Space ROS ↔ Space ROS DDS heartbeat
+/// health derived from the `fleet_monitor` packet (APID 0x160).
+async fn get_fleet_dds_link(State(state): State<Arc<UiState>>) -> Json<FleetDdsLinkDto> {
+    let hk = state.hk.read().await;
+    Json(if let Some(frame) = latest_hk_frame(&hk, 0x160) {
+        let d = &frame.data;
+        FleetDdsLinkDto {
+            health_mask: d.first().copied().unwrap_or(0),
+            land_age_ms: read_be_u32(d, 1),
+            uav_age_ms:  read_be_u32(d, 5),
+            cryo_age_ms: read_be_u32(d, 9),
+            last_hk_utc: Some(frame.timestamp_utc.clone()),
+        }
+    } else {
+        FleetDdsLinkDto::default()
+    })
+}
+
 /// `POST /api/tc` — validates the command-validity window before accepting the
 /// TC for uplink (SYS-REQ-0061).
 async fn post_tc(
@@ -326,7 +489,8 @@ async fn stream_snapshots(mut socket: WebSocket, state: Arc<UiState>) {
     }
 }
 
-/// Serialises all seven surfaces into a single JSON object for the WS snapshot.
+/// Serialises all seven surfaces plus the four-link health summary into a
+/// single JSON object for the WS snapshot (Phase 8).
 pub async fn build_snapshot(state: &UiState) -> String {
     #[derive(Serialize)]
     struct Snapshot<'a> {
@@ -337,6 +501,9 @@ pub async fn build_snapshot(state: &UiState) -> String {
         link: &'a LinkStateDto,
         cop1: &'a Cop1Status,
         time_auth: &'a TimeAuthority,
+        /// Per-link freshness for cfs-ros (0x128), ros-ground (0x129),
+        /// fleet-dds (0x160) — derived from the HK ring buffer.
+        links_health: Vec<LinkHealthSnapshot>,
     }
     let hk = state.hk.read().await;
     let events = state.events.read().await;
@@ -345,6 +512,7 @@ pub async fn build_snapshot(state: &UiState) -> String {
     let link = state.link.read().await;
     let cop1 = state.cop1.read().await;
     let time_auth = state.time_auth.read().await;
+    let links_health = build_links_health(&hk);
     serde_json::to_string(&Snapshot {
         hk: &hk,
         events: &events,
@@ -353,6 +521,7 @@ pub async fn build_snapshot(state: &UiState) -> String {
         link: &link,
         cop1: &cop1,
         time_auth: &time_auth,
+        links_health,
     })
     .unwrap_or_else(|_| "{}".into())
 }
@@ -378,6 +547,9 @@ pub fn router(state: Arc<UiState>) -> Router {
         .route("/api/time", get(get_time_auth))
         .route("/api/tc", post(post_tc))
         .route("/api/rover", get(get_rover))
+        .route("/api/link/cfs-ros",    get(get_cfs_ros_link))
+        .route("/api/link/ros-ground", get(get_ros_ground_link))
+        .route("/api/link/fleet-dds",  get(get_fleet_dds_link))
         .route("/ws", get(ws_handler))
         .with_state(state)
 }
@@ -561,5 +733,161 @@ mod tests {
     #[tokio::test]
     async fn ui_router_builds_without_panic() {
         let _r = router(make_state());
+    }
+
+    // ── Phase 5: cFS ↔ Space ROS link (APID 0x128) ──────────────────────────
+
+    // GIVEN no HK snapshot for APID 0x128
+    // WHEN  GET /api/link/cfs-ros handler is called
+    // THEN  returns default DTO with all-zero counters and no timestamp
+    #[tokio::test]
+    async fn ui_get_cfs_ros_link_empty_returns_default() {
+        let Json(result) = get_cfs_ros_link(State(make_state())).await;
+        assert_eq!(result.packets_routed, 0);
+        assert_eq!(result.err_counter, 0);
+        assert!(result.last_hk_utc.is_none());
+    }
+
+    // GIVEN an HK snapshot for APID 0x128 with PacketsRouted=42 (LE bytes)
+    // WHEN  GET /api/link/cfs-ros handler is called
+    // THEN  returns packets_routed=42 and a non-None timestamp
+    #[tokio::test]
+    async fn ui_get_cfs_ros_link_parses_le_payload() {
+        let state = make_state();
+        let mut data = vec![0u8; 24];
+        data[0..4].copy_from_slice(&42u32.to_le_bytes());
+        state.hk.write().await.push(HkSnapshot {
+            asset:  "ros2_bridge".into(),
+            apid:   0x128,
+            frames: vec![HkFrame { timestamp_utc: "2026-01-01T00:00:00Z".into(), data }],
+        });
+        let Json(result) = get_cfs_ros_link(State(state)).await;
+        assert_eq!(result.packets_routed, 42);
+        assert!(result.last_hk_utc.is_some());
+    }
+
+    // ── Phase 6: Space ROS ↔ Ground link (APID 0x129) ───────────────────────
+
+    // GIVEN no HK snapshot for APID 0x129
+    // WHEN  GET /api/link/ros-ground handler is called
+    // THEN  returns default (session_active=false, signal_strength=0)
+    #[tokio::test]
+    async fn ui_get_ros_ground_link_empty_returns_default() {
+        let Json(result) = get_ros_ground_link(State(make_state())).await;
+        assert!(!result.session_active);
+        assert_eq!(result.signal_strength, 0);
+        assert!(result.last_hk_utc.is_none());
+    }
+
+    // GIVEN an HK snapshot for APID 0x129 with session_active=1, signal_strength=85
+    // WHEN  GET /api/link/ros-ground handler is called
+    // THEN  returns session_active=true and signal_strength=85
+    #[tokio::test]
+    async fn ui_get_ros_ground_link_parses_be_payload() {
+        let state = make_state();
+        let mut data = vec![0u8; 10];
+        data[0] = 1;   // session_active
+        data[1] = 85;  // signal_strength (0–255)
+        // data[2..10] = 0 → last_contact_s = 0.0
+        state.hk.write().await.push(HkSnapshot {
+            asset:  "prx1_link_state".into(),
+            apid:   0x129,
+            frames: vec![HkFrame { timestamp_utc: "2026-01-01T00:00:00Z".into(), data }],
+        });
+        let Json(result) = get_ros_ground_link(State(state)).await;
+        assert!(result.session_active);
+        assert_eq!(result.signal_strength, 85);
+    }
+
+    // ── Phase 7: Space ROS ↔ Space ROS fleet DDS (APID 0x160) ───────────────
+
+    // GIVEN no HK snapshot for APID 0x160
+    // WHEN  GET /api/link/fleet-dds handler is called
+    // THEN  returns default (health_mask=0, all ages=0)
+    #[tokio::test]
+    async fn ui_get_fleet_dds_link_empty_returns_default() {
+        let Json(result) = get_fleet_dds_link(State(make_state())).await;
+        assert_eq!(result.health_mask, 0);
+        assert_eq!(result.land_age_ms, 0);
+        assert!(result.last_hk_utc.is_none());
+    }
+
+    // GIVEN an HK snapshot for APID 0x160 with health_mask=0x07 and land_age=1000 ms
+    // WHEN  GET /api/link/fleet-dds handler is called
+    // THEN  returns health_mask=7 and land_age_ms=1000
+    #[tokio::test]
+    async fn ui_get_fleet_dds_link_parses_be_payload() {
+        let state = make_state();
+        let mut data = vec![0u8; 13];
+        data[0] = 0x07;
+        data[1..5].copy_from_slice(&1000u32.to_be_bytes());
+        state.hk.write().await.push(HkSnapshot {
+            asset:  "fleet_monitor".into(),
+            apid:   0x160,
+            frames: vec![HkFrame { timestamp_utc: "2026-01-01T00:00:00Z".into(), data }],
+        });
+        let Json(result) = get_fleet_dds_link(State(state)).await;
+        assert_eq!(result.health_mask, 0x07);
+        assert_eq!(result.land_age_ms, 1000);
+    }
+
+    // ── Phase 8: WS snapshot includes links_health ───────────────────────────
+
+    // GIVEN a default (empty) state
+    // WHEN  build_snapshot is called
+    // THEN  the JSON contains a "links_health" key
+    #[tokio::test]
+    async fn ui_build_snapshot_contains_links_health_key() {
+        let snap = build_snapshot(&make_state()).await;
+        assert!(snap.contains("\"links_health\""),
+            "snapshot must contain links_health surface");
+    }
+
+    // GIVEN a state with an APID 0x160 HK snapshot
+    // WHEN  build_snapshot is called
+    // THEN  the JSON contains the "fleet-dds" link name
+    #[tokio::test]
+    async fn ui_build_snapshot_links_health_includes_fleet_dds() {
+        let state = make_state();
+        state.hk.write().await.push(HkSnapshot {
+            asset:  "fleet_monitor".into(),
+            apid:   0x160,
+            frames: vec![HkFrame {
+                timestamp_utc: "2026-01-01T00:00:00Z".into(),
+                data:          vec![0u8; 13],
+            }],
+        });
+        let snap = build_snapshot(&state).await;
+        assert!(snap.contains("\"fleet-dds\""),
+            "links_health must include fleet-dds entry when APID 0x160 is present");
+    }
+
+    // ── Helper unit tests ────────────────────────────────────────────────────
+
+    // GIVEN a byte slice with a known LE u32 at offset 0
+    // WHEN  read_le_u32 is called
+    // THEN  returns the correct value
+    #[test]
+    fn ui_read_le_u32_correct() {
+        let data = 0xDEAD_BEEFu32.to_le_bytes();
+        assert_eq!(read_le_u32(&data, 0), 0xDEAD_BEEF);
+    }
+
+    // GIVEN a byte slice with a known BE u32 at offset 1
+    // WHEN  read_be_u32 is called
+    // THEN  returns the correct value
+    #[test]
+    fn ui_read_be_u32_with_offset() {
+        let mut data = vec![0u8; 5];
+        data[1..5].copy_from_slice(&0x0102_0304u32.to_be_bytes());
+        assert_eq!(read_be_u32(&data, 1), 0x0102_0304);
+    }
+
+    // GIVEN a slice shorter than 4 bytes
+    // WHEN  read_le_u32 is called
+    // THEN  returns 0 without panicking
+    #[test]
+    fn ui_read_le_u32_underrun_returns_zero() {
+        assert_eq!(read_le_u32(&[0xFF, 0xFF], 0), 0);
     }
 }
