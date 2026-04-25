@@ -428,6 +428,29 @@ mod tests {
         assert_eq!(result.tai_offset_s, 37);
     }
 
+    // GIVEN a freshly constructed TimeAuthority
+    // WHEN  time_suspect_seen is read
+    // THEN  it defaults to false (no clock-skew injection observed yet)
+    // Phase 40 DoD: APID 0x541 → time_suspect_seen badge per §638.
+    #[tokio::test]
+    async fn ui_time_authority_default_time_suspect_seen_false() {
+        let Json(result) = get_time_auth(State(make_state())).await;
+        assert!(!result.time_suspect_seen,
+            "time_suspect_seen must default to false before any 0x541 injection");
+    }
+
+    // GIVEN a UiState whose time_auth.time_suspect_seen has been set true
+    // WHEN  GET /api/time handler is called
+    // THEN  time_suspect_seen is true in the response
+    #[tokio::test]
+    async fn ui_time_authority_time_suspect_seen_can_be_set_true() {
+        let state = make_state();
+        state.time_auth.write().await.time_suspect_seen = true;
+        let Json(result) = get_time_auth(State(state)).await;
+        assert!(result.time_suspect_seen,
+            "time_suspect_seen must be true after badge is set");
+    }
+
     // ── TC submission (SYS-REQ-0061) ─────────────────────────────────────────
 
     // GIVEN now_tai.coarse = 1100, light_time_s = 5.0, valid_until_tai_coarse = 1000
