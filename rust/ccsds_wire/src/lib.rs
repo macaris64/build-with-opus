@@ -19,6 +19,7 @@
 // Phase 03 brings the first public item (`Apid`), so they land now.
 #![forbid(unsafe_code)]
 #![deny(clippy::all)]
+#![deny(clippy::unwrap_used)]
 #![deny(missing_docs)]
 #![warn(rust_2018_idioms)]
 

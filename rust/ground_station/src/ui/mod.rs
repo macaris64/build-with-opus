@@ -278,10 +278,7 @@ async fn post_tc(
 
 /// `GET /ws` — WebSocket endpoint; pushes a JSON snapshot of all seven surfaces
 /// on connect, then closes (Phase B; persistent streaming is Phase C+).
-async fn ws_handler(
-    ws: WebSocketUpgrade,
-    State(state): State<Arc<UiState>>,
-) -> impl IntoResponse {
+async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<UiState>>) -> impl IntoResponse {
     ws.on_upgrade(|socket| send_snapshot(socket, state))
 }
 

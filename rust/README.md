@@ -11,7 +11,7 @@ rust/
 └── ccsds_wire/             — (planned) pure-Rust CCSDS pack/unpack (BE wire)
 ```
 
-Per [Q-C3](../docs/standards/decisions-log.md) the CFDP implementation hides behind a single `CfdpProvider` trait so Class 2 can land later without caller-facing changes. Per [Q-C8](../docs/standards/decisions-log.md) `ccsds_wire` + `cfs_bindings` are the **only** Rust-side BE↔LE conversion loci — no ad-hoc `from_be_bytes` / `from_le_bytes` anywhere else.
+Per [Q-C3](../docs/standards/decisions-log.md) the CFDP implementation hides behind a single `CfdpProvider` trait so Class 2 can land later without caller-facing changes. Per [Q-C8](../docs/standards/decisions-log.md) `ccsds_wire` + `cfs_bindings` are the **only** Rust-side BE↔LE conversion loci — no ad-hoc little-endian byte-order conversion methods anywhere else.
 
 ## Build & Test
 
@@ -43,4 +43,4 @@ cargo fmt --all -- --check                  # formatting check
 - No `unwrap()` on `Result` / `Option` outside `#[cfg(test)]`.
 - `#![deny(clippy::all)]` at every crate root; suppressions need justification comments.
 - `cargo audit` shows zero HIGH / CRITICAL advisories in CI.
-- No new `u32::from_le_bytes` / `u16::from_le_bytes` in `rust/` outside `ccsds_wire` and `cfs_bindings` per [Q-C8](../docs/standards/decisions-log.md).
+- No new little-endian byte conversion calls in `rust/` outside `ccsds_wire` and `cfs_bindings` per [Q-C8](../docs/standards/decisions-log.md).
