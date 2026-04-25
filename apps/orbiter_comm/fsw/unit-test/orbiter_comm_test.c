@@ -82,6 +82,27 @@ void CFE_ES_ExitApp(uint32 ExitStatus)
     (void)ExitStatus;
 }
 
+/* OSAL stubs — OS_SocketOpen/Addr* are non-mocked thin stubs (always succeed);
+ * OS_SocketSendTo is mocked so tests can verify call presence or absence. */
+int32 OS_SocketOpen(osal_id_t *sock_id, OS_SocketDomain_t Domain, OS_SocketType_t Type)
+{
+    (void)Domain; (void)Type;
+    *sock_id = 1U;
+    return OS_SUCCESS;
+}
+int32 OS_SocketAddrInit(OS_SockAddr_t *Addr, OS_SocketDomain_t Domain)
+{ (void)Addr; (void)Domain; return OS_SUCCESS; }
+int32 OS_SocketAddrFromString(OS_SockAddr_t *Addr, const char *string)
+{ (void)Addr; (void)string; return OS_SUCCESS; }
+int32 OS_SocketAddrSetPort(OS_SockAddr_t *Addr, uint16 PortNum)
+{ (void)Addr; (void)PortNum; return OS_SUCCESS; }
+int32 OS_SocketSendTo(osal_id_t sock_id, const void *buffer, uint32 buflen,
+                      const OS_SockAddr_t *RemoteAddr)
+{
+    (void)sock_id; (void)buffer; (void)buflen; (void)RemoteAddr;
+    return (int32)mock();
+}
+
 int32 CFE_MSG_GetMsgId(const CFE_MSG_Message_t *MsgPtr, CFE_SB_MsgId_t *MsgId)
 {
     (void)MsgPtr;
@@ -422,7 +443,9 @@ static void test_link_goes_los_after_timeout(void **state)
     will_return(CFE_MSG_GetMsgId,     ORBITER_COMM_CMD_MID);
     will_return(CFE_MSG_GetFcnCode,   ORBITER_COMM_NOOP_CC);
 
-    /* Send LOS_TIMEOUT_CYCLES HK requests; the Nth increments idle to >= threshold */
+    /* Send LOS_TIMEOUT_CYCLES HK requests; the Nth increments idle to >= threshold.
+     * Cycles 1..(N-1) are in AOS → OS_SocketSendTo is called each cycle.
+     * Cycle N: LOS declared before emit check → OS_SocketSendTo NOT called. */
     for (i = 0U; i < ORBITER_COMM_LOS_TIMEOUT_CYCLES; i++)
     {
         will_return(CFE_ES_RunLoop,       true);
@@ -430,6 +453,10 @@ static void test_link_goes_los_after_timeout(void **state)
         will_return(CFE_SB_ReceiveBuffer, CFE_SUCCESS);
         will_return(CFE_MSG_GetMsgId,     ORBITER_COMM_HK_MID);
         will_return(CFE_SB_TransmitMsg,   CFE_SUCCESS);
+        if (i < (ORBITER_COMM_LOS_TIMEOUT_CYCLES - 1U))
+        {
+            will_return(OS_SocketSendTo,  OS_SUCCESS);
+        }
     }
 
     will_return(CFE_ES_RunLoop, false);
@@ -456,7 +483,7 @@ static void test_link_stays_los_past_timeout(void **state)
     will_return(CFE_MSG_GetMsgId,     ORBITER_COMM_CMD_MID);
     will_return(CFE_MSG_GetFcnCode,   ORBITER_COMM_NOOP_CC);
 
-    /* Timeout HK cycles to trigger LOS */
+    /* Timeout HK cycles to trigger LOS; AOS cycles emit frames */
     {
         uint8 i;
         for (i = 0U; i < ORBITER_COMM_LOS_TIMEOUT_CYCLES; i++)
@@ -466,10 +493,14 @@ static void test_link_stays_los_past_timeout(void **state)
             will_return(CFE_SB_ReceiveBuffer, CFE_SUCCESS);
             will_return(CFE_MSG_GetMsgId,     ORBITER_COMM_HK_MID);
             will_return(CFE_SB_TransmitMsg,   CFE_SUCCESS);
+            if (i < (ORBITER_COMM_LOS_TIMEOUT_CYCLES - 1U))
+            {
+                will_return(OS_SocketSendTo,  OS_SUCCESS);
+            }
         }
     }
 
-    /* One additional HK cycle; already in LOS, no second event */
+    /* One additional HK cycle; already in LOS, no emit and no second event */
     will_return(CFE_ES_RunLoop,       true);
     will_return(CFE_SB_ReceiveBuffer, (uintptr_t)&buf);
     will_return(CFE_SB_ReceiveBuffer, CFE_SUCCESS);
@@ -514,6 +545,64 @@ static void test_sb_receive_error_increments_err_counter(void **state)
 }
 
 /* ---------------------------------------------------------------------------
+ * Phase D: EmitAosFrame skipped when link is LOS
+ *
+ * Given:  init succeeds (link starts in LOS by default)
+ * When:   HK request arrives (no prior TC, so link remains LOS)
+ * Then:   OS_SocketSendTo is NOT called (no will_return queued; any call → assert)
+ * --------------------------------------------------------------------------- */
+static void test_emit_aos_frame_skipped_in_los(void **state)
+{
+    (void)state;
+    CFE_SB_Buffer_t buf;
+    memset(&buf, 0, sizeof(buf));
+
+    queue_successful_init();
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)&buf);
+    will_return(CFE_SB_ReceiveBuffer, CFE_SUCCESS);
+    will_return(CFE_MSG_GetMsgId,     ORBITER_COMM_HK_MID);
+    will_return(CFE_SB_TransmitMsg,   CFE_SUCCESS);
+    /* No will_return(OS_SocketSendTo, ...) — any call would fail via mock assert */
+    will_return(CFE_ES_RunLoop, false);
+    ORBITER_COMM_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * Phase D: EmitAosFrame called when link is AOS
+ *
+ * Given:  init succeeds; NOOP transitions link to AOS
+ * When:   HK request arrives (link is AOS)
+ * Then:   OS_SocketSendTo is called once; return OS_SUCCESS
+ * --------------------------------------------------------------------------- */
+static void test_emit_aos_frame_called_in_aos(void **state)
+{
+    (void)state;
+    CFE_SB_Buffer_t buf;
+    memset(&buf, 0, sizeof(buf));
+
+    queue_successful_init();
+
+    /* NOOP → transitions from LOS to AOS */
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)&buf);
+    will_return(CFE_SB_ReceiveBuffer, CFE_SUCCESS);
+    will_return(CFE_MSG_GetMsgId,     ORBITER_COMM_CMD_MID);
+    will_return(CFE_MSG_GetFcnCode,   ORBITER_COMM_NOOP_CC);
+
+    /* HK request while AOS → EmitAosFrame → OS_SocketSendTo called */
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)&buf);
+    will_return(CFE_SB_ReceiveBuffer, CFE_SUCCESS);
+    will_return(CFE_MSG_GetMsgId,     ORBITER_COMM_HK_MID);
+    will_return(CFE_SB_TransmitMsg,   CFE_SUCCESS);
+    will_return(OS_SocketSendTo,      OS_SUCCESS);
+
+    will_return(CFE_ES_RunLoop, false);
+    ORBITER_COMM_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
  * Test runner
  * --------------------------------------------------------------------------- */
 int main(void)
@@ -545,6 +634,9 @@ int main(void)
         /* Error paths */
         cmocka_unit_test(test_unknown_msgid_increments_err_counter),
         cmocka_unit_test(test_sb_receive_error_increments_err_counter),
+        /* Phase D: AOS frame emission */
+        cmocka_unit_test(test_emit_aos_frame_skipped_in_los),
+        cmocka_unit_test(test_emit_aos_frame_called_in_aos),
     };
 
     return cmocka_run_group_tests(tests, NULL, NULL);
