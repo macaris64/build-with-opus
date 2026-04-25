@@ -260,8 +260,6 @@ static void ORBITER_ADCS_UpdateWheelData(void)
  * --------------------------------------------------------------------------- */
 static void ORBITER_ADCS_SendHkPacket(void)
 {
-    uint32 i;
-
     /* Populate attitude HK */
     ORBITER_ADCS_Data.HkTlm.CurrentQuat  = ORBITER_ADCS_CurrentQuat;
     ORBITER_ADCS_Data.HkTlm.TargetQuat   = ORBITER_ADCS_TargetQuat;
@@ -272,12 +270,6 @@ static void ORBITER_ADCS_SendHkPacket(void)
 
     CFE_SB_TransmitMsg(&ORBITER_ADCS_Data.HkTlm.Header, true);
 
-    /* Populate wheel telemetry (stub zeros until Phase 35) */
-    for (i = 0U; i < ORBITER_ADCS_NUM_WHEELS; i++)
-    {
-        ORBITER_ADCS_Data.WheelTlm.WheelSpeedRpm[i] =
-            ORBITER_ADCS_Data.WheelTlm.WheelSpeedRpm[i]; /* retain Phase-35 update */
-    }
-
+    /* Wheel speeds remain at stub zeros until mcu_rwa_gw populates them (Phase 35). */
     CFE_SB_TransmitMsg(&ORBITER_ADCS_Data.WheelTlm.Header, true);
 }

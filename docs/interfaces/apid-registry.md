@@ -73,7 +73,9 @@ Reserved per orbiter application. As `apps/orbiter_*` modules come online, add r
 |---|---|---|---|
 | `0x100` | `sample_app` | HK telemetry (existing template app) | TBR — see [`packet-catalog.md`](packet-catalog.md) (planned) |
 | `0x101`–`0x10F` | `orbiter_cdh` | Command & Data Handling HK, event logs | TBR |
-| `0x110`–`0x11F` | `orbiter_adcs` | ADCS state, attitude, wheel telemetry | TBR |
+| `0x110` | `orbiter_adcs` | Attitude HK: current + target quaternion, counters | TBR |
+| `0x111` | `orbiter_adcs` | Wheel telemetry: RWA speed array (stub zeros; live data Phase 35 via `mcu_rwa_gw`) | TBR |
+| `0x112`–`0x11F` | `orbiter_adcs` | Reserved for future ADCS telemetry streams | — |
 | `0x120`–`0x12F` | `orbiter_comm` | Comm stack status, link budget | TBR |
 | `0x130`–`0x13F` | `orbiter_power` | EPS telemetry (via MCU gateway) | TBR |
 | `0x140`–`0x15F` | `orbiter_payload` | Science payload TM | TBR |
