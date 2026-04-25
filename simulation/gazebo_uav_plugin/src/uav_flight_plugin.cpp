@@ -1,4 +1,5 @@
 #include "uav_flight_plugin.h"
+#include "uav_flight_core.h"
 
 #include <gazebo/msgs/msgs.hh>
 
@@ -77,10 +78,11 @@ void UavFlightPlugin::OnUpdate()
     auto links = model_->GetLinks();
     if (!links.empty())
     {
+        const auto cmd = gazebo_uav::compute_force_cmd(thrust, yaw_rate);
         auto base = links.front();
         /* Force in world Z; torque about world Z for yaw. */
-        base->AddRelativeForce(math::Vector3(0.0, 0.0, thrust));
-        base->AddRelativeTorque(math::Vector3(0.0, 0.0, yaw_rate));
+        base->AddRelativeForce(math::Vector3(0.0, 0.0, cmd.force_z));
+        base->AddRelativeTorque(math::Vector3(0.0, 0.0, cmd.torque_z));
     }
 }
 

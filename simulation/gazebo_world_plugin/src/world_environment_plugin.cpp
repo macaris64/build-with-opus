@@ -1,13 +1,10 @@
 #include "world_environment_plugin.h"
+#include "world_environment_core.h"
 
 #include <functional>
 
 namespace gazebo
 {
-
-/* Log every N physics steps to avoid flooding the console.
- * At 1000 Hz physics this is one log line per second. */
-static constexpr uint64_t LOG_INTERVAL_TICKS = 1000U;
 
 WorldEnvironmentPlugin::WorldEnvironmentPlugin()
 : world_(nullptr)
@@ -50,7 +47,7 @@ void WorldEnvironmentPlugin::OnUpdate()
 
     ++tick_count_;
 
-    if (tick_count_ % LOG_INTERVAL_TICKS == 0U)
+    if (gazebo_world::should_emit_heartbeat(tick_count_))
     {
         /* Periodic heartbeat — Phase 39+ will replace this with sideband
          * SPP emission to the FSW sim_adapter app. */
