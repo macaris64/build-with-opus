@@ -117,7 +117,7 @@ class TestSimLaunchDescription(unittest.TestCase):
         ld = self._load_launch()
         timers = [e for e in ld.entities if isinstance(e, TimerAction)]
         for timer in timers:
-            self.assertGreater(float(timer._period), 0.0)
+            self.assertGreater(float(timer.period), 0.0)
 
 
 def main():
