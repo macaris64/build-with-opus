@@ -20,6 +20,7 @@ set(SPACECRAFT_ID 42)
 set(MISSION_APPS
     sample_app
     orbiter_cdh
+    orbiter_adcs
 )
 
 message(STATUS "Mission: ${MISSION_NAME}  SCID: ${SPACECRAFT_ID}  Apps: ${MISSION_APPS}")

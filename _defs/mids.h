@@ -14,7 +14,8 @@
 /* ── Orbiter TM MIDs (APID block 0x100–0x17F) ─────────────────────────────── */
 #define SAMPLE_APP_HK_MID        0x0900U   /* 0x0800 | 0x100 */
 #define ORBITER_CDH_HK_MID       0x0901U   /* 0x0800 | 0x101 */
-#define ORBITER_ADCS_HK_MID      0x0910U   /* 0x0800 | 0x110 */
+#define ORBITER_ADCS_HK_MID         0x0910U   /* 0x0800 | 0x110 — attitude quaternion HK */
+#define ORBITER_ADCS_WHEEL_TLM_MID  0x0911U   /* 0x0800 | 0x111 — wheel telemetry (stub; mcu_rwa_gw Phase 35) */
 #define ORBITER_COMM_HK_MID      0x0920U   /* 0x0800 | 0x120 */
 #define ORBITER_POWER_HK_MID     0x0930U   /* 0x0800 | 0x130 */
 #define ORBITER_PAYLOAD_HK_MID   0x0940U   /* 0x0800 | 0x140 */
