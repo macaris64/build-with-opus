@@ -81,4 +81,8 @@ if(BUILD_TESTING)
     target_include_directories(test_rover_cryobot PUBLIC ${rover_common_INCLUDE_DIRS})
 endif()
 
+ament_export_include_directories(include)
+ament_export_libraries(hdlc_lite rover_cryobot_component)
+ament_export_dependencies(rover_common rclcpp rclcpp_lifecycle rclcpp_components std_msgs lifecycle_msgs)
+
 ament_package()
