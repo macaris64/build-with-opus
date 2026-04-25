@@ -1,0 +1,10 @@
+scenario: SCN-OFF-02-safemode
+# Force orbiter safe-mode at T+30 s.
+# Exercises the asset-local safing path; reason_code 2 = radiation event.
+# APID 0x542 (PKT-SIM-0542-0001); ICD-sim-fsw.md §3.3; Q-F2, Q-F3.
+faults:
+  - type: safe_mode
+    at_tai_offset_s: 30.0
+    asset_class: 0
+    instance_id: 1
+    trigger_reason_code: 2

@@ -1,0 +1,12 @@
+scenario: SCN-OFF-01-clockskew
+# Single clock-skew injection on orbiter at T+5 s.
+# Exercises the DEGRADED time-authority transition per 08-timing-and-clocks.md §4.
+# APID 0x541 (PKT-SIM-0541-0001); ICD-sim-fsw.md §3.2; Q-F2.
+faults:
+  - type: clock_skew
+    at_tai_offset_s: 5.0
+    asset_class: 0
+    instance_id: 1
+    offset_ms: 500
+    rate_ppm_x1000: 0
+    clock_duration_s: 10

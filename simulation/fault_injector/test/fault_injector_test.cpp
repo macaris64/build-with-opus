@@ -14,6 +14,10 @@
 #include <cstring>
 #include <fstream>
 #include <string>
+#include <cstdlib>
+#include <fcntl.h>
+#include <sys/resource.h>
+#include <unistd.h>
 
 /* ── Minimal test harness ──────────────────────────────────────────────────── */
 
@@ -332,6 +336,222 @@ static void test_tick_emits_fault_at_correct_time()
     CHECK(fi.GetScenario().faults[0].emitted);
 }
 
+/* ── Sensor-noise YAML field coverage ─────────────────────────────────────── */
+
+static void test_load_sensor_noise_parses()
+{
+    /* Given a sensor-noise scenario, When loaded,
+     * Then all sensor_noise-specific fields are parsed correctly. */
+    const std::string path = write_tmp_scenario(
+        "scenario: SCN-TEST-NOISE\n"
+        "faults:\n"
+        "  - type: sensor_noise\n"
+        "    at_tai_offset_s: 5.0\n"
+        "    asset_class: 0\n"
+        "    instance_id: 1\n"
+        "    sensor_index: 1\n"
+        "    noise_model: 1\n"
+        "    noise_param_1: 100\n"
+        "    noise_param_2: -50\n"
+        "    noise_duration_ms: 5000\n");
+
+    FaultInjector fi;
+    CHECK(fi.LoadScenario(path));
+    CHECK(fi.GetScenario().faults.size() == 1U);
+    CHECK(fi.GetScenario().faults[0].type == FaultType::SENSOR_NOISE);
+    CHECK(fi.GetScenario().faults[0].sensor_index == 1U);
+    CHECK(fi.GetScenario().faults[0].noise_model == 1U);
+    CHECK(fi.GetScenario().faults[0].noise_param_1 == 100);
+    CHECK(fi.GetScenario().faults[0].noise_param_2 == -50);
+    CHECK(fi.GetScenario().faults[0].noise_duration_ms == 5000U);
+}
+
+/* ── Tick / EmitSpp dispatch coverage ─────────────────────────────────────── */
+
+static void test_tick_emits_packet_drop_fault()
+{
+    /* Given a packet_drop fault at t=0.5s, When Tick(1.0) is called,
+     * Then the SPP is encoded and the fault is marked emitted. */
+    const std::string path = write_tmp_scenario(
+        "scenario: SCN-TICK-DROP\n"
+        "faults:\n"
+        "  - type: packet_drop\n"
+        "    at_tai_offset_s: 0.5\n"
+        "    link_id: 1\n"
+        "    drop_probability_x10000: 2500\n"
+        "    drop_duration_ms: 60000\n");
+
+    FaultInjector fi;
+    CHECK(fi.LoadScenario(path));
+    fi.Tick(1.0);
+    CHECK(fi.GetScenario().faults[0].emitted);
+}
+
+static void test_tick_emits_safe_mode_fault()
+{
+    /* Given a safe_mode fault at t=1.0s, When Tick(2.0) is called,
+     * Then the SPP is encoded and the fault is marked emitted. */
+    const std::string path = write_tmp_scenario(
+        "scenario: SCN-TICK-SAFE\n"
+        "faults:\n"
+        "  - type: safe_mode\n"
+        "    at_tai_offset_s: 1.0\n"
+        "    asset_class: 0\n"
+        "    instance_id: 1\n"
+        "    trigger_reason_code: 2\n");
+
+    FaultInjector fi;
+    CHECK(fi.LoadScenario(path));
+    fi.Tick(2.0);
+    CHECK(fi.GetScenario().faults[0].emitted);
+}
+
+static void test_tick_emits_sensor_noise_fault()
+{
+    /* Given a sensor_noise fault at t=0.1s, When Tick(0.5) is called,
+     * Then the SPP is encoded and the fault is marked emitted. */
+    const std::string path = write_tmp_scenario(
+        "scenario: SCN-TICK-NOISE\n"
+        "faults:\n"
+        "  - type: sensor_noise\n"
+        "    at_tai_offset_s: 0.1\n"
+        "    asset_class: 0\n"
+        "    instance_id: 1\n"
+        "    sensor_index: 1\n"
+        "    noise_model: 1\n"
+        "    noise_param_1: 0\n"
+        "    noise_param_2: 0\n"
+        "    noise_duration_ms: 1000\n");
+
+    FaultInjector fi;
+    CHECK(fi.LoadScenario(path));
+    fi.Tick(0.5);
+    CHECK(fi.GetScenario().faults[0].emitted);
+}
+
+/* ── Start / Stop socket lifecycle ────────────────────────────────────────── */
+
+static void test_start_invalid_host_returns_false()
+{
+    /* Given a non-IPv4 host string, When Start() is called,
+     * Then inet_pton returns 0, Start() returns false, error is set. */
+    FaultInjector fi;
+    CHECK(!fi.Start("not-a-valid-ip", 12345U));
+    CHECK(!fi.GetLastError().empty());
+}
+
+static void test_start_and_stop()
+{
+    /* Given a valid loopback host/port, When Start() is called,
+     * Then it returns true; Stop() closes the socket; second Stop() is a no-op. */
+    FaultInjector fi;
+    CHECK(fi.Start("127.0.0.1", 12345U));
+    fi.Stop();  /* covers Stop() cleanup path (sock_fd_ >= 0) */
+    fi.Stop();  /* covers Stop() no-op path (sock_fd_ == -1) */
+}
+
+static void test_tick_sends_spp_when_socket_open()
+{
+    /* Given an open socket and a clock-skew fault at t=0s,
+     * When Tick(1.0) is called, Then send() is exercised (datagram silently
+     * discarded — no listener required for UDP). */
+    const std::string path = write_tmp_scenario(
+        "scenario: SCN-SEND\n"
+        "faults:\n"
+        "  - type: clock_skew\n"
+        "    at_tai_offset_s: 0.0\n"
+        "    asset_class: 0\n"
+        "    instance_id: 1\n"
+        "    offset_ms: 100\n"
+        "    rate_ppm_x1000: 0\n"
+        "    clock_duration_s: 1\n");
+
+    FaultInjector fi;
+    CHECK(fi.LoadScenario(path));
+    CHECK(fi.Start("127.0.0.1", 19999U));
+    fi.Tick(1.0);
+    fi.Stop();
+    CHECK(fi.GetScenario().faults[0].emitted);
+}
+
+static void test_start_socket_failure()
+{
+    /* Temporarily lower RLIMIT_NOFILE to the next-available fd so socket()
+     * returns EMFILE. Probe with open() to find the fd, then close it and
+     * cap the limit at that value. */
+    const int probe = open("/dev/null", O_RDONLY | O_CLOEXEC);
+    if (probe < 0)
+    {
+        std::printf("SKIP test_start_socket_failure: already at fd limit\n");
+        return;
+    }
+    close(probe);
+
+    struct rlimit saved{};
+    getrlimit(RLIMIT_NOFILE, &saved);
+    struct rlimit capped = saved;
+    capped.rlim_cur = (rlim_t)probe;   /* cap at probe index; next open() fails */
+    if (setrlimit(RLIMIT_NOFILE, &capped) != 0)
+    {
+        std::printf("SKIP test_start_socket_failure: setrlimit not permitted\n");
+        return;
+    }
+
+    FaultInjector fi;
+    const bool started = fi.Start("127.0.0.1", 12345U);
+    setrlimit(RLIMIT_NOFILE, &saved);  /* restore unconditionally */
+
+    CHECK(!started);
+    CHECK(!fi.GetLastError().empty());
+}
+
+/* ── Canonical scenario file tests (Phase 39 DoD) ─────────────────────────── */
+
+static void test_load_canonical_scn_nom_01()
+{
+    /* Given the canonical nominal scenario file on disk,
+     * When LoadScenario is called with its path,
+     * Then it returns true, the name is "SCN-NOM-01", and faults list is empty. */
+    FaultInjector fi;
+    const bool ok = fi.LoadScenario(SCENARIOS_DIR "/SCN-NOM-01.yaml");
+    CHECK(ok);
+    if (!ok) { return; }
+    CHECK(fi.GetScenario().name == "SCN-NOM-01");
+    CHECK(fi.GetScenario().faults.empty());
+}
+
+static void test_load_canonical_scn_off_01_clockskew()
+{
+    /* Given the canonical clock-skew off-nominal scenario,
+     * When loaded, Then it has exactly one CLOCK_SKEW fault. */
+    FaultInjector fi;
+    const bool ok = fi.LoadScenario(SCENARIOS_DIR "/SCN-OFF-01-clockskew.yaml");
+    CHECK(ok);
+    if (!ok) { return; }
+    CHECK(fi.GetScenario().name == "SCN-OFF-01-clockskew");
+    CHECK(fi.GetScenario().faults.size() == 1U);
+    if (fi.GetScenario().faults.size() >= 1U)
+    {
+        CHECK(fi.GetScenario().faults[0].type == FaultType::CLOCK_SKEW);
+    }
+}
+
+static void test_load_canonical_scn_off_02_safemode()
+{
+    /* Given the canonical safe-mode off-nominal scenario,
+     * When loaded, Then it has exactly one SAFE_MODE fault. */
+    FaultInjector fi;
+    const bool ok = fi.LoadScenario(SCENARIOS_DIR "/SCN-OFF-02-safemode.yaml");
+    CHECK(ok);
+    if (!ok) { return; }
+    CHECK(fi.GetScenario().name == "SCN-OFF-02-safemode");
+    CHECK(fi.GetScenario().faults.size() == 1U);
+    if (fi.GetScenario().faults.size() >= 1U)
+    {
+        CHECK(fi.GetScenario().faults[0].type == FaultType::SAFE_MODE);
+    }
+}
+
 /* ── Main ─────────────────────────────────────────────────────────────────── */
 
 int main(void)
@@ -357,7 +577,19 @@ int main(void)
     test_load_scenario_missing_file_returns_false();
     test_load_scenario_missing_scenario_field_returns_false();
     test_load_scenario_unknown_fault_type_returns_false();
+    test_load_sensor_noise_parses();
     test_tick_emits_fault_at_correct_time();
+    test_tick_emits_packet_drop_fault();
+    test_tick_emits_safe_mode_fault();
+    test_tick_emits_sensor_noise_fault();
+    test_start_invalid_host_returns_false();
+    test_start_and_stop();
+    test_tick_sends_spp_when_socket_open();
+    test_start_socket_failure();
+
+    test_load_canonical_scn_nom_01();
+    test_load_canonical_scn_off_01_clockskew();
+    test_load_canonical_scn_off_02_safemode();
 
     std::printf("fault_injector_test: %d passed, %d failed\n", g_pass, g_fail);
     return (g_fail > 0) ? 1 : 0;

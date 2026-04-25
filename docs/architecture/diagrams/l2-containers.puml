@@ -4,7 +4,7 @@
 ' This source is the "higher-fidelity" render referenced by 00-system-of-systems.md line 116;
 ' the Mermaid block in that doc is the in-Markdown equivalent.
 
-!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!include ./c4lib/C4_Container.puml
 
 LAYOUT_WITH_LEGEND()
 

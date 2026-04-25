@@ -388,7 +388,7 @@ jobs:
       - name: Parse PlantUML diagrams
         run: |
           if compgen -G "docs/architecture/diagrams/*.puml" > /dev/null; then
-            plantuml -checkonly docs/architecture/diagrams/*.puml
+            plantuml -DRELATIVE_INCLUDE="." -checkonly docs/architecture/diagrams/*.puml
           else
             echo "plantuml-parse: no .puml files found — skipping."
           fi

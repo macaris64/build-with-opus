@@ -1,0 +1,5 @@
+scenario: SCN-NOM-01
+# Nominal baseline — no fault injection.
+# Verifies clean link and clock before any off-nominal runs.
+# ICD-sim-fsw.md §3; SYS-REQ-0040, SYS-REQ-0041.
+faults: []

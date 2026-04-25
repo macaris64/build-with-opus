@@ -457,4 +457,45 @@ mod tests {
         let r: ApidRouter = ApidRouter::default();
         assert_eq!(r.forbidden_apid_seen_total(0x540), 0);
     }
+
+    // -----------------------------------------------------------------------
+    // Phase 39 integration: fault_injector ICD-compliant clock-skew SPP
+    // rejected by ApidRouter on any RF VC (wires the Phase 25 router into
+    // the Phase 39 fault-inject pipeline per DoD §3).
+    //
+    // Given  an ICD-sim-fsw.md §3.2-compliant PKT-SIM-0541-0001 payload:
+    //   asset_class=0 (u8), instance_id=1 (u8), offset_ms=500 (BE i32),
+    //   rate_ppm_x1000=0 (BE i32), duration_s=10 (BE u32), crc16 (u16)
+    // When   routed on VC 0 (RF uplink path)
+    // Then   Route::Rejected { ForbiddenFaultInjectApid } is returned
+    // And    forbidden_apid_seen_total(0x541) == 1
+    // Q-C8: PacketBuilder is the sole BE encoding locus; no raw to_be_bytes.
+    // Q-F3: transient sim state — excluded from Vault<T> per §5.2.
+    // -----------------------------------------------------------------------
+    #[test]
+    fn phase39_fault_inject_clock_skew_spp_rejected_on_rf() {
+        let user_data: [u8; 16] = [
+            0x00, // asset_class = 0
+            0x01, // instance_id = 1
+            0x00, 0x00, 0x01, 0xF4, // offset_ms = 500 (BE i32)
+            0x00, 0x00, 0x00, 0x00, // rate_ppm_x1000 = 0 (BE i32)
+            0x00, 0x00, 0x00, 0x0A, // duration_s = 10 (BE u32)
+            0x00, 0x00, // crc16 placeholder (router rejects on APID; ignores payload)
+        ];
+        let bytes = PacketBuilder::tm(Apid::new(0x0541).unwrap())
+            .func_code(FuncCode::new(0x0001).unwrap())
+            .instance_id(InstanceId::new(1).unwrap())
+            .user_data(&user_data)
+            .build()
+            .unwrap();
+        let pkt = SpacePacket::parse(&bytes).unwrap();
+        let mut router = ApidRouter::new();
+        assert_eq!(
+            router.route(0, &pkt),
+            Route::Rejected {
+                reason: RejectReason::ForbiddenFaultInjectApid,
+            },
+        );
+        assert_eq!(router.forbidden_apid_seen_total(0x541), 1);
+    }
 }

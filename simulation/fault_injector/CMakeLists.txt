@@ -22,6 +22,10 @@ target_include_directories(fault_injector_test PRIVATE include)
 target_compile_options(fault_injector_test PRIVATE -Wall -Wextra -Werror)
 target_link_libraries(fault_injector_test PRIVATE fault_injector_lib)
 
+# Pass source-tree scenarios directory so canonical-file tests can locate it.
+target_compile_definitions(fault_injector_test PRIVATE
+    SCENARIOS_DIR="${CMAKE_SOURCE_DIR}/simulation/scenarios")
+
 # CTest integration — same pattern as cFS app unit-test executables.
 if(BUILD_TESTING)
     add_test(NAME fault_injector_unit_tests COMMAND fault_injector_test)
