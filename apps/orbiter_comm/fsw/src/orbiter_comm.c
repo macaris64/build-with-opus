@@ -50,6 +50,7 @@ static void  ORBITER_COMM_ProcessGroundCommand(const CFE_SB_Buffer_t *SBBufPtr);
 static void  ORBITER_COMM_SendHkPacket(void);
 static uint8 ORBITER_COMM_CountActiveTxns(void);
 static void  ORBITER_COMM_EmitAosFrame(const uint8 *payload, uint16 len);
+static void  ORBITER_COMM_ForwardRoverHk(const CFE_SB_Buffer_t *SBBufPtr);
 
 /* ---------------------------------------------------------------------------
  * ORBITER_COMM_AppMain — Application entry point
@@ -133,6 +134,28 @@ static int32 ORBITER_COMM_Init(void)
         return status;
     }
 
+    /* Subscribe to rover HK MIDs forwarded by ros2_bridge (VC3 relay path). */
+    status = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(ROVER_LAND_HK_MID),
+                              ORBITER_COMM_Data.CmdPipe);
+    if (status != CFE_SUCCESS)
+    {
+        return status;
+    }
+
+    status = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(ROVER_UAV_HK_MID),
+                              ORBITER_COMM_Data.CmdPipe);
+    if (status != CFE_SUCCESS)
+    {
+        return status;
+    }
+
+    status = CFE_SB_Subscribe(CFE_SB_ValueToMsgId(ROVER_CRYOBOT_HK_MID),
+                              ORBITER_COMM_Data.CmdPipe);
+    if (status != CFE_SUCCESS)
+    {
+        return status;
+    }
+
     /* Initialise application counters */
     ORBITER_COMM_Data.CmdCounter      = 0U;
     ORBITER_COMM_Data.ErrCounter      = 0U;
@@ -199,6 +222,12 @@ static void ORBITER_COMM_ProcessCommandPacket(const CFE_SB_Buffer_t *SBBufPtr)
 
         case ORBITER_COMM_HK_MID:
             ORBITER_COMM_SendHkPacket();
+            break;
+
+        case ROVER_LAND_HK_MID:
+        case ROVER_UAV_HK_MID:
+        case ROVER_CRYOBOT_HK_MID:
+            ORBITER_COMM_ForwardRoverHk(SBBufPtr);
             break;
 
         default:
@@ -380,5 +409,22 @@ static void ORBITER_COMM_SendHkPacket(void)
     {
         ORBITER_COMM_EmitAosFrame((const uint8 *)&ORBITER_COMM_Data.HkTlm,
                                   (uint16)sizeof(ORBITER_COMM_Data.HkTlm));
+    }
+}
+
+/* ---------------------------------------------------------------------------
+ * ORBITER_COMM_ForwardRoverHk — Relay a rover HK packet to the ground station.
+ *
+ * Called when ROVER_LAND_HK_MID, ROVER_UAV_HK_MID, or ROVER_CRYOBOT_HK_MID
+ * is received from ros2_bridge.  The raw SB buffer bytes are forwarded via
+ * EmitAosFrame; ApidRouter at the ground station routes by APID (0x300–0x43F
+ * → Route::RoverForward), so no VC wrapping is needed for SITL.
+ * --------------------------------------------------------------------------- */
+static void ORBITER_COMM_ForwardRoverHk(const CFE_SB_Buffer_t *SBBufPtr)
+{
+    if (ORBITER_COMM_LinkState == ORBITER_COMM_LINK_AOS)
+    {
+        ORBITER_COMM_EmitAosFrame((const uint8 *)SBBufPtr,
+                                  (uint16)sizeof(CFE_SB_Buffer_t));
     }
 }

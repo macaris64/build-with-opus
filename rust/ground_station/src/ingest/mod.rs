@@ -64,6 +64,7 @@ pub mod decoder;
 pub mod demux;
 pub mod framer;
 pub mod router;
+pub mod sinks;
 
 pub use router::{ApidRouter, RejectReason, Route};
 

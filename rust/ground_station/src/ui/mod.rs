@@ -36,9 +36,10 @@ use axum::{
 };
 use ccsds_wire::Cuc;
 use serde::{Deserialize, Serialize};
-use tokio::sync::RwLock;
+use tokio::sync::{mpsc, RwLock};
 
 use crate::ui::time::{check_validity_window, TaiUtcConverter, ValidityError};
+use crate::uplink::dispatcher::TcQueueEntry;
 
 // ── Surface 1: HK dashboard ──────────────────────────────────────────────────
 
@@ -213,12 +214,15 @@ pub struct UiState {
     /// One-way light-time estimate in seconds (updated from ranging data).
     pub light_time_s: RwLock<f64>,
     pub converter: TaiUtcConverter,
+    /// TC uplink queue — wired to [`crate::uplink::dispatcher`].
+    pub tc_tx: mpsc::Sender<TcQueueEntry>,
 }
 
 impl UiState {
     /// Creates a zeroed state with the given TAI−UTC leap-second offset.
+    /// `tc_tx` is the channel to the TC uplink dispatcher task.
     #[must_use]
-    pub fn new(leap_seconds: i64) -> Self {
+    pub fn new(leap_seconds: i64, tc_tx: mpsc::Sender<TcQueueEntry>) -> Self {
         Self {
             hk: RwLock::new(Vec::new()),
             events: RwLock::new(Vec::new()),
@@ -230,6 +234,7 @@ impl UiState {
             now_tai: RwLock::new(Cuc { coarse: 0, fine: 0 }),
             light_time_s: RwLock::new(600.0),
             converter: TaiUtcConverter::new(leap_seconds),
+            tc_tx,
         }
     }
 }
@@ -264,6 +269,20 @@ async fn get_time_auth(State(state): State<Arc<UiState>>) -> Json<TimeAuthority>
     Json(state.time_auth.read().await.clone())
 }
 
+/// `GET /api/rover` — returns HK snapshots for rover APIDs (0x300–0x43F).
+///
+/// Convenience filter over `GET /api/hk` for frontends that only show the
+/// rover telemetry panel.
+async fn get_rover(State(state): State<Arc<UiState>>) -> Json<Vec<HkSnapshot>> {
+    let hk = state.hk.read().await;
+    let rover: Vec<HkSnapshot> = hk
+        .iter()
+        .filter(|s| (0x300u16..=0x43Fu16).contains(&s.apid))
+        .cloned()
+        .collect();
+    Json(rover)
+}
+
 /// `POST /api/tc` — validates the command-validity window before accepting the
 /// TC for uplink (SYS-REQ-0061).
 async fn post_tc(
@@ -278,20 +297,33 @@ async fn post_tc(
     };
     check_validity_window(valid_until, now_tai, light_time_s)
         .map_err(|e: ValidityError| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
+    // Queue the command stub (apid=0, func_code=0 until the TC catalog lands).
+    // try_send is non-blocking; capacity-full means the operator should retry.
+    let entry = TcQueueEntry {
+        apid: 0,
+        func_code: 0,
+        payload: Vec::new(),
+        valid_until_tai_coarse: req.valid_until_tai_coarse,
+    };
+    let _ = state.tc_tx.try_send(entry);
     Ok(Json(TcSubmitResponse { accepted: true }))
 }
 
-/// `GET /ws` — WebSocket endpoint; pushes a JSON snapshot of all seven surfaces
-/// on connect, then closes (Phase B; persistent streaming is Phase C+).
+/// `GET /ws` — WebSocket endpoint; streams a JSON snapshot of all seven
+/// surfaces once per second until the client disconnects.
 async fn ws_handler(ws: WebSocketUpgrade, State(state): State<Arc<UiState>>) -> impl IntoResponse {
-    ws.on_upgrade(|socket| send_snapshot(socket, state))
+    ws.on_upgrade(|socket| stream_snapshots(socket, state))
 }
 
-async fn send_snapshot(mut socket: WebSocket, state: Arc<UiState>) {
-    let snapshot = build_snapshot(&state).await;
-    // Best-effort send; ignore errors (client may have disconnected).
-    let _ = socket.send(Message::Text(snapshot)).await;
-    let _ = socket.close().await;
+async fn stream_snapshots(mut socket: WebSocket, state: Arc<UiState>) {
+    let mut interval = tokio::time::interval(std::time::Duration::from_secs(1));
+    loop {
+        interval.tick().await;
+        let snapshot = build_snapshot(&state).await;
+        if socket.send(Message::Text(snapshot)).await.is_err() {
+            break; // client disconnected — stop streaming
+        }
+    }
 }
 
 /// Serialises all seven surfaces into a single JSON object for the WS snapshot.
@@ -345,6 +377,7 @@ pub fn router(state: Arc<UiState>) -> Router {
         .route("/api/cop1", get(get_cop1))
         .route("/api/time", get(get_time_auth))
         .route("/api/tc", post(post_tc))
+        .route("/api/rover", get(get_rover))
         .route("/ws", get(ws_handler))
         .with_state(state)
 }
@@ -362,7 +395,8 @@ mod tests {
     use super::*;
 
     fn make_state() -> Arc<UiState> {
-        Arc::new(UiState::new(37))
+        let (tc_tx, _tc_rx) = mpsc::channel(1);
+        Arc::new(UiState::new(37, tc_tx))
     }
 
     // ── Surface handlers ─────────────────────────────────────────────────────

@@ -28,7 +28,7 @@ proptest   = "1"
 serde      = { version = "1", features = ["derive"] }
 serde_json = "1"
 axum       = { version = "0.7", features = ["ws"] }
-time       = { version = "0.3", features = ["formatting"] }
+time       = { version = "0.3", features = ["formatting", "std"] }
 tempfile   = "3"
 
 # Workspace-wide lint policy. Verbatim from

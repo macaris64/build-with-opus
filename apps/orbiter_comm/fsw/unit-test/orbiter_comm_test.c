@@ -130,7 +130,7 @@ CFE_SB_MsgId_t CFE_SB_ValueToMsgId(CFE_SB_MsgId_Atom_t MsgIdValue)
 #endif /* UNIT_TEST */
 
 /* ---------------------------------------------------------------------------
- * Helper: queue will_return values for a successful 2-subscription init.
+ * Helper: queue will_return values for a successful 5-subscription init.
  * --------------------------------------------------------------------------- */
 static void queue_successful_init(void)
 {
@@ -140,6 +140,9 @@ static void queue_successful_init(void)
     will_return(CFE_SB_CreatePipe,  CFE_SUCCESS);
     will_return(CFE_SB_Subscribe,   CFE_SUCCESS); /* CMD_MID */
     will_return(CFE_SB_Subscribe,   CFE_SUCCESS); /* HK_MID */
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS); /* ROVER_LAND_HK_MID */
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS); /* ROVER_UAV_HK_MID */
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS); /* ROVER_CRYOBOT_HK_MID */
 }
 
 /* ---------------------------------------------------------------------------
@@ -194,6 +197,51 @@ static void test_init_subscribe_hk_mid_fails(void **state)
     will_return(CFE_SB_CreatePipe,  CFE_SUCCESS);
     will_return(CFE_SB_Subscribe,   CFE_SUCCESS);          /* CMD_MID ok */
     will_return(CFE_SB_Subscribe,   CFE_SB_MAX_MSGS_MET); /* HK_MID fails */
+    will_return(CFE_ES_RunLoop, false);
+    ORBITER_COMM_AppMain();
+}
+
+static void test_init_subscribe_rover_land_hk_mid_fails(void **state)
+{
+    (void)state;
+    will_return(CFE_ES_RegisterApp, CFE_SUCCESS);
+    will_return(CFE_EVS_Register,   CFE_SUCCESS);
+    will_return(CFE_SB_CreatePipe,  1);
+    will_return(CFE_SB_CreatePipe,  CFE_SUCCESS);
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);          /* CMD_MID ok */
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);          /* HK_MID ok */
+    will_return(CFE_SB_Subscribe,   CFE_SB_MAX_MSGS_MET); /* ROVER_LAND_HK_MID fails */
+    will_return(CFE_ES_RunLoop, false);
+    ORBITER_COMM_AppMain();
+}
+
+static void test_init_subscribe_rover_uav_hk_mid_fails(void **state)
+{
+    (void)state;
+    will_return(CFE_ES_RegisterApp, CFE_SUCCESS);
+    will_return(CFE_EVS_Register,   CFE_SUCCESS);
+    will_return(CFE_SB_CreatePipe,  1);
+    will_return(CFE_SB_CreatePipe,  CFE_SUCCESS);
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);          /* CMD_MID ok */
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);          /* HK_MID ok */
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);          /* ROVER_LAND_HK_MID ok */
+    will_return(CFE_SB_Subscribe,   CFE_SB_MAX_MSGS_MET); /* ROVER_UAV_HK_MID fails */
+    will_return(CFE_ES_RunLoop, false);
+    ORBITER_COMM_AppMain();
+}
+
+static void test_init_subscribe_rover_cryobot_hk_mid_fails(void **state)
+{
+    (void)state;
+    will_return(CFE_ES_RegisterApp, CFE_SUCCESS);
+    will_return(CFE_EVS_Register,   CFE_SUCCESS);
+    will_return(CFE_SB_CreatePipe,  1);
+    will_return(CFE_SB_CreatePipe,  CFE_SUCCESS);
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);          /* CMD_MID ok */
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);          /* HK_MID ok */
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);          /* ROVER_LAND_HK_MID ok */
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);          /* ROVER_UAV_HK_MID ok */
+    will_return(CFE_SB_Subscribe,   CFE_SB_MAX_MSGS_MET); /* ROVER_CRYOBOT_HK_MID fails */
     will_return(CFE_ES_RunLoop, false);
     ORBITER_COMM_AppMain();
 }
@@ -614,6 +662,9 @@ int main(void)
         cmocka_unit_test(test_init_pipe_create_fails),
         cmocka_unit_test(test_init_subscribe_cmd_mid_fails),
         cmocka_unit_test(test_init_subscribe_hk_mid_fails),
+        cmocka_unit_test(test_init_subscribe_rover_land_hk_mid_fails),
+        cmocka_unit_test(test_init_subscribe_rover_uav_hk_mid_fails),
+        cmocka_unit_test(test_init_subscribe_rover_cryobot_hk_mid_fails),
         /* Happy-path init */
         cmocka_unit_test(test_init_success),
         /* Command dispatch */

@@ -54,6 +54,7 @@ pub const COP1_STALE_ABORT_MULT: u32 = 10;
 
 pub mod builder;
 pub mod cop1;
+pub mod dispatcher;
 pub mod framer;
 
 pub use builder::{BuilderError, TcBuilder, TcIntent};

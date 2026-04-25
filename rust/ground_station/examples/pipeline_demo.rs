@@ -43,7 +43,7 @@ use ground_station::ingest::{
     SPP_TO_ROUTER_CAP,
     decoder::SppDecoder,
     demux::VcDemultiplexer,
-    framer::{AosFramer, AOS_FRAME_LEN},
+    framer::{AosFramer, AOS_FRAME_LEN, LinkState},
 };
 use ccsds_wire::{Apid, Cuc, FuncCode, InstanceId, PacketBuilder, SequenceCount, SpacePacket};
 use tokio::io::AsyncWriteExt;
@@ -257,6 +257,7 @@ async fn main() {
     // ── Pipeline channels ─────────────────────────────────────────────────────
     let (frame_tx, frame_rx) = mpsc::channel::<AosFrame>(AOS_TO_DEMUX_CAP);
     let (clcw_tx, _clcw_rx) = watch::channel::<Option<[u8; 4]>>(None);
+    let (link_state_tx, _link_state_rx) = watch::channel(LinkState::Los);
     let (mut demux, mut vc_rxs) = VcDemultiplexer::with_default_channels();
 
     // Per-VC SppDecoder → tagged router channel (vc_id, raw_bytes)
@@ -292,7 +293,7 @@ async fn main() {
 
     // ── Stage 2: AosFramer task ───────────────────────────────────────────────
     tokio::spawn(async move {
-        let mut framer = AosFramer::new(frame_tx, clcw_tx);
+        let mut framer = AosFramer::new(frame_tx, clcw_tx, link_state_tx);
         framer.run(reader).await.expect("framer run");
     });
 

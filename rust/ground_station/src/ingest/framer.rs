@@ -190,6 +190,10 @@ impl FrameWindow {
 pub struct AosFramer {
     frame_tx: mpsc::Sender<super::AosFrame>,
     clcw_tx: watch::Sender<Option<[u8; 4]>>,
+    /// Publishes [`LinkState`] transitions to subscribers (e.g. the UI link-state
+    /// updater).  Watch semantics (latest-wins) are intentional: link state is
+    /// current state, not an event history.
+    link_state_tx: watch::Sender<LinkState>,
     fecf_errors_total: u64,
     last_fecf_event: Option<Instant>,
     link_state: LinkState,
@@ -203,14 +207,18 @@ impl AosFramer {
     ///
     /// Initial [`LinkState`] is [`LinkState::Los`]. The framer transitions to
     /// [`LinkState::Aos`] after sustained valid-frame arrival per §9.3.
+    /// `link_state_tx` receives every [`LinkState`] change; subscribers read it
+    /// via the corresponding [`watch::Receiver`].
     #[must_use]
     pub fn new(
         frame_tx: mpsc::Sender<super::AosFrame>,
         clcw_tx: watch::Sender<Option<[u8; 4]>>,
+        link_state_tx: watch::Sender<LinkState>,
     ) -> Self {
         Self {
             frame_tx,
             clcw_tx,
+            link_state_tx,
             fecf_errors_total: 0,
             last_fecf_event: None,
             link_state: LinkState::Los,
@@ -365,6 +373,10 @@ impl AosFramer {
                 self.aos_condition_since = None;
             }
         }
+        // Always publish the current state so the watch subscriber can update
+        // UiState::link on every state change.  watch::Sender::send ignores
+        // stale-receiver errors (subscriber may not yet be listening at startup).
+        let _ = self.link_state_tx.send(self.link_state);
     }
 
     fn compute_link_state(&mut self, now: Instant) -> LinkState {
@@ -470,7 +482,8 @@ mod tests {
     async fn test_valid_frame_ocf_present() {
         let (frame_tx, mut frame_rx) = mpsc::channel(8);
         let (clcw_tx, clcw_rx) = watch::channel(None);
-        let mut framer = AosFramer::new(frame_tx, clcw_tx);
+        let (link_state_tx, _link_state_rx) = watch::channel(LinkState::Los);
+        let mut framer = AosFramer::new(frame_tx, clcw_tx, link_state_tx);
 
         let clcw = [0xDE_u8, 0xAD, 0xBE, 0xEF];
         feed_frame(&mut framer, &build_frame(0, Some(clcw))).await;
@@ -494,7 +507,8 @@ mod tests {
 
         let (frame_tx, mut frame_rx) = mpsc::channel(8);
         let (clcw_tx, clcw_rx) = watch::channel(None);
-        let mut framer = AosFramer::new(frame_tx, clcw_tx);
+        let (link_state_tx, _link_state_rx) = watch::channel(LinkState::Los);
+        let mut framer = AosFramer::new(frame_tx, clcw_tx, link_state_tx);
 
         // First bad frame: event emitted (last_fecf_event = None → emit branch).
         feed_bad_fecf(&mut framer).await;
@@ -531,7 +545,8 @@ mod tests {
     async fn test_valid_frame_no_ocf() {
         let (frame_tx, mut frame_rx) = mpsc::channel(8);
         let (clcw_tx, clcw_rx) = watch::channel(None);
-        let mut framer = AosFramer::new(frame_tx, clcw_tx);
+        let (link_state_tx, _link_state_rx) = watch::channel(LinkState::Los);
+        let mut framer = AosFramer::new(frame_tx, clcw_tx, link_state_tx);
 
         feed_frame(&mut framer, &build_frame(1, None)).await;
 
@@ -558,7 +573,8 @@ mod tests {
 
         let (frame_tx, _frame_rx) = mpsc::channel(64);
         let (clcw_tx, _clcw_rx) = watch::channel(None);
-        let mut framer = AosFramer::new(frame_tx, clcw_tx);
+        let (link_state_tx, _link_state_rx) = watch::channel(LinkState::Los);
+        let mut framer = AosFramer::new(frame_tx, clcw_tx, link_state_tx);
 
         assert_eq!(
             framer.link_state(),

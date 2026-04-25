@@ -5,9 +5,11 @@ use ground_station::ingest::{
     ApidRouter, Route,
     decoder::SppDecoder,
     demux::VcDemultiplexer,
-    framer::{AosFramer, AOS_FRAME_LEN},
+    framer::{AosFramer, AOS_FRAME_LEN, LinkState},
+    sinks,
 };
-use ground_station::ui::{self, UiState};
+use ground_station::ui::{self, LinkVariant, UiState};
+use ground_station::uplink;
 use log::info;
 use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
@@ -39,8 +41,11 @@ async fn main() -> Result<()> {
 
     info!("Ground station starting — listening on UDP {listen_addr}");
 
+    // ── TC uplink channel (created before UiState so tc_tx can be stored) ────
+    let (tc_tx, tc_rx) = mpsc::channel::<uplink::dispatcher::TcQueueEntry>(64);
+
     // ── Shared UI state ───────────────────────────────────────────────────────
-    let ui_state = Arc::new(UiState::new(37));
+    let ui_state = Arc::new(UiState::new(37, tc_tx));
 
     // ── Pipeline channels ─────────────────────────────────────────────────────
     let (frame_tx, frame_rx) = mpsc::channel::<AosFrame>(AOS_TO_DEMUX_CAP);
@@ -51,11 +56,11 @@ async fn main() -> Result<()> {
     let (tagged_tx, mut tagged_rx) =
         mpsc::channel::<(u8, Bytes)>(SPP_TO_ROUTER_CAP * 4);
 
-    // Sink channels — receivers kept as _ until Phase E sinks land.
-    let (hk_tx, _hk_rx) = mpsc::channel::<Bytes>(ingest::ROUTER_TO_HK_CAP);
-    let (event_tx, _event_rx) = mpsc::channel::<Bytes>(ingest::ROUTER_TO_EVENT_CAP);
+    // Sink channels — receivers wired to sink tasks below.
+    let (hk_tx, hk_rx) = mpsc::channel::<Bytes>(ingest::ROUTER_TO_HK_CAP);
+    let (event_tx, event_rx) = mpsc::channel::<Bytes>(ingest::ROUTER_TO_EVENT_CAP);
     let (cfdp_tx, _cfdp_rx) = mpsc::channel::<Bytes>(ingest::ROUTER_TO_CFDP_CAP);
-    let (rover_tx, _rover_rx) = mpsc::channel::<Bytes>(ingest::ROUTER_TO_ROVER_CAP);
+    let (rover_tx, rover_rx) = mpsc::channel::<Bytes>(ingest::ROUTER_TO_ROVER_CAP);
 
     // ── Stage 1a: UDP receive → pipe ─────────────────────────────────────────
     // UdpSocket does not implement AsyncRead (datagrams, not a byte stream).
@@ -85,8 +90,9 @@ async fn main() -> Result<()> {
     });
 
     // ── Stage 1b: AosFramer ───────────────────────────────────────────────────
+    let (link_state_tx, link_state_rx) = watch::channel::<LinkState>(LinkState::Los);
     tokio::spawn(async move {
-        let mut framer = AosFramer::new(frame_tx, clcw_tx);
+        let mut framer = AosFramer::new(frame_tx, clcw_tx, link_state_tx);
         if let Err(e) = framer.run(pipe_reader).await {
             log::error!("AosFramer error: {e}");
         }
@@ -164,6 +170,34 @@ async fn main() -> Result<()> {
                     }
                 }
             }
+        }
+    });
+
+    // ── TC dispatcher ─────────────────────────────────────────────────────────
+    drop(uplink::dispatcher::spawn_tc_dispatcher(tc_rx));
+
+    // ── Sink tasks — consume hk/event/rover channels and update UiState ──────
+    sinks::spawn_hk_sink(hk_rx, rover_rx, ui_state.clone());
+    sinks::spawn_event_sink(event_rx, ui_state.clone());
+
+    // ── Link-state watch subscriber ───────────────────────────────────────────
+    // Drives UiState::link from AosFramer link-state transitions.
+    let ui_link = ui_state.clone();
+    let mut link_state_rx_task = link_state_rx;
+    tokio::spawn(async move {
+        while link_state_rx_task.changed().await.is_ok() {
+            let ls = *link_state_rx_task.borrow();
+            let variant = match ls {
+                LinkState::Aos => LinkVariant::Aos,
+                LinkState::Los => LinkVariant::Los,
+                LinkState::Degraded => LinkVariant::Degraded,
+            };
+            let now_utc = time::OffsetDateTime::now_utc()
+                .format(&time::format_description::well_known::Rfc3339)
+                .unwrap_or_else(|_| String::new());
+            let mut link = ui_link.link.write().await;
+            link.state = variant;
+            link.last_frame_utc = Some(now_utc);
         }
     });
 
@@ -278,8 +312,9 @@ mod tests {
         let cursor = std::io::Cursor::new(stream_bytes);
         let reader = tokio::io::BufReader::new(cursor);
 
+        let (link_state_tx_t, _) = watch::channel(ingest::framer::LinkState::Los);
         tokio::spawn(async move {
-            let mut framer = AosFramer::new(frame_tx, clcw_tx);
+            let mut framer = AosFramer::new(frame_tx, clcw_tx, link_state_tx_t);
             framer.run(reader).await.expect("framer run");
         });
 
