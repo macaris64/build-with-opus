@@ -19,6 +19,7 @@ set(SPACECRAFT_ID 42)
 #   4. Register MIDs in _defs/mids.h and docs/interfaces/apid-registry.md
 set(MISSION_APPS
     sample_app
+    orbiter_cdh
 )
 
 message(STATUS "Mission: ${MISSION_NAME}  SCID: ${SPACECRAFT_ID}  Apps: ${MISSION_APPS}")

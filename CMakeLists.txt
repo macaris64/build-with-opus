@@ -24,6 +24,7 @@ option(SAKURA_COVERAGE "Enable gcov branch-coverage instrumentation on unit-test
 # Each app lives under apps/<name>/ and owns its own CMakeLists.txt.
 # In a full cFS integration, the cFE cmake framework provides add_cfe_app().
 add_subdirectory(apps/sample_app)
+add_subdirectory(apps/orbiter_cdh)
 
 # ── Simulation Plugins ────────────────────────────────────────────────────────
 # Gazebo plugins require Gazebo Harmonic to be installed. The subdirectory
