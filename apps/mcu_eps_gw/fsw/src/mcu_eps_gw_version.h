@@ -1,0 +1,8 @@
+#ifndef MCU_EPS_GW_VERSION_H
+#define MCU_EPS_GW_VERSION_H
+
+#define MCU_EPS_GW_MAJOR_VERSION  1
+#define MCU_EPS_GW_MINOR_VERSION  0
+#define MCU_EPS_GW_REVISION       0
+
+#endif /* MCU_EPS_GW_VERSION_H */

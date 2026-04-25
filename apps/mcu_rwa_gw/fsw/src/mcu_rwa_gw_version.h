@@ -1,0 +1,8 @@
+#ifndef MCU_RWA_GW_VERSION_H
+#define MCU_RWA_GW_VERSION_H
+
+#define MCU_RWA_GW_MAJOR_VERSION  1
+#define MCU_RWA_GW_MINOR_VERSION  0
+#define MCU_RWA_GW_REVISION       0
+
+#endif /* MCU_RWA_GW_VERSION_H */

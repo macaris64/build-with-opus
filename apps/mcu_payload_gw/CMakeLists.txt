@@ -1,0 +1,1 @@
+sakura_add_cfs_app(mcu_payload_gw)

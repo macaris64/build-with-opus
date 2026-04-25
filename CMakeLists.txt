@@ -29,6 +29,9 @@ add_subdirectory(apps/orbiter_adcs)
 add_subdirectory(apps/orbiter_comm)
 add_subdirectory(apps/orbiter_power)
 add_subdirectory(apps/orbiter_payload)
+add_subdirectory(apps/mcu_payload_gw)
+add_subdirectory(apps/mcu_rwa_gw)
+add_subdirectory(apps/mcu_eps_gw)
 
 # ── Simulation Plugins ────────────────────────────────────────────────────────
 # Gazebo plugins require Gazebo Harmonic to be installed. The subdirectory
