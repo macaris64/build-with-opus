@@ -6,9 +6,6 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-# Strict flags applied to all targets. -Werror turns warnings into build failures.
-add_compile_options(-Wall -Wextra -Werror -pedantic)
-
 # CTest integration — run with: ctest --test-dir build --output-on-failure
 include(CTest)
 
@@ -42,12 +39,21 @@ if(SAKURA_CFS_RUNTIME)
     # layout to the paths cFE's default MISSION_MODULE_SEARCH_PATH expects.
     set(MISSION_SOURCE_DIR "${CMAKE_SOURCE_DIR}" CACHE PATH
         "Top level mission source directory (overrides cFE default)")
-    # cFE's top-level cmake sets up add_cfe_app() and related helpers.
+    # add_subdirectory(cfs/cFE) is intentionally placed BEFORE add_compile_options
+    # below.  cmake processes add_subdirectory immediately; child directory scopes
+    # inherit only the compile options that are set at the moment they are entered.
+    # Placing cFE first prevents our -Werror from propagating into cFE upstream
+    # host tools that have benign sign-compare warnings (e.g. cfeconfig_platformdata_tool.c).
     add_subdirectory(cfs/cFE)
     message(STATUS "SAKURA_CFS_RUNTIME: ON — apps will be linked as cFE shared libraries")
 else()
     message(STATUS "SAKURA_CFS_RUNTIME: OFF — CMocka unit-test path only (default)")
 endif()
+
+# Strict flags applied to all SAKURA-II targets.
+# Placed after add_subdirectory(cfs/cFE) so cFE's upstream host tools do not
+# inherit -Werror and fail on sign-compare or other upstream warnings.
+add_compile_options(-Wall -Wextra -Werror -pedantic)
 
 # ── cFS Applications ──────────────────────────────────────────────────────────
 # Each app lives under apps/<name>/ and owns its own CMakeLists.txt.
