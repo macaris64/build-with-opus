@@ -162,7 +162,7 @@ fn main() {
     for (seq_n, (label, intent)) in catalog.iter().enumerate() {
         let seq = SequenceCount::new(seq_n as u16).unwrap();
         let spp = TcBuilder::build(intent, seq, now).expect("catalog intents must be valid");
-        println!("  [{:2}] {label}", seq_n,);
+        println!("  [{:2}] {label}", seq_n);
         println!(
             "       APID=0x{:03X}  len={:3}B  first4=[{:02X} {:02X} {:02X} {:02X}]",
             (u16::from(spp[0] & 0x07) << 8) | u16::from(spp[1]),
