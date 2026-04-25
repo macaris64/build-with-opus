@@ -23,7 +23,7 @@ TeleopNode::TeleopNode(const rclcpp::NodeOptions & options)
 rclcpp_lifecycle::node_interfaces::LifecycleNodeInterface::CallbackReturn
 TeleopNode::on_configure(const rclcpp_lifecycle::State & /*state*/)
 {
-    cmd_vel_pub_ = create_lifecycle_publisher<geometry_msgs::msg::Twist>(
+    cmd_vel_pub_ = create_publisher<geometry_msgs::msg::Twist>(
         "cmd_vel", CMD_VEL_QOS);
 
     RCLCPP_INFO(get_logger(), "TeleopNode configured");

@@ -1,9 +1,6 @@
 cmake_minimum_required(VERSION 3.20)
 project(rover_teleop)
 
-# Strict flags on this target only — ament adds its own flags globally
-target_compile_options_if_available = ""
-
 find_package(ament_cmake REQUIRED)
 find_package(rclcpp REQUIRED)
 find_package(rclcpp_lifecycle REQUIRED)

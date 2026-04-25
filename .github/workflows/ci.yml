@@ -144,7 +144,7 @@ jobs:
             -v "${{ github.workspace }}/ros2_ws:/workspace/ros2_ws" \
             sakura-ci/ros2:local \
             bash -c "
-              source /opt/ros/humble/setup.bash &&
+              source /opt/ros/spaceros/setup.bash &&
               cd /workspace &&
               colcon build --base-paths ros2_ws/src --symlink-install &&
               colcon test --base-paths ros2_ws/src &&
