@@ -21,6 +21,12 @@
 /* Single application-global state object — static to restrict linkage */
 static ORBITER_COMM_Data_t ORBITER_COMM_Data;
 
+/* Phase D: UDP socket handle and address for ground station AOS frame output.
+ * Opened once in Init(); used by ORBITER_COMM_EmitAosFrame() during AOS link state.
+ * MISRA C:2012 Rule 8.11 deviation: static linkage is intentional (file-scope state). */
+static osal_id_t   ORBITER_COMM_GsSockId;
+static OS_SockAddr_t ORBITER_COMM_GsAddr;
+
 /* Q-F3: CFDP transaction table is radiation-sensitive; pinned to .critical_mem.
  * MISRA C:2012 Rule 8.11 deviation: static linkage is intentional;
  * section attribute requires file-scope placement outside the struct.
@@ -43,6 +49,7 @@ static void  ORBITER_COMM_ProcessCommandPacket(const CFE_SB_Buffer_t *SBBufPtr);
 static void  ORBITER_COMM_ProcessGroundCommand(const CFE_SB_Buffer_t *SBBufPtr);
 static void  ORBITER_COMM_SendHkPacket(void);
 static uint8 ORBITER_COMM_CountActiveTxns(void);
+static void  ORBITER_COMM_EmitAosFrame(const uint8 *payload, uint16 len);
 
 /* ---------------------------------------------------------------------------
  * ORBITER_COMM_AppMain — Application entry point
@@ -151,6 +158,21 @@ static int32 ORBITER_COMM_Init(void)
 
     ORBITER_COMM_Data.HkTlm.RttProbeIdEcho = 0U;
     ORBITER_COMM_Data.HkTlm.CfdpBytesTotal = 0U;
+
+    /* Phase D: open UDP socket for ground station AOS frame output.
+     * Non-fatal: COMM continues normally if socket init fails — GS output
+     * is a diagnostic aid, not a flight-critical path. */
+    if (OS_SocketOpen(&ORBITER_COMM_GsSockId, OS_SocketDomain_INET, OS_SocketType_DATAGRAM) == OS_SUCCESS)
+    {
+        if ((OS_SocketAddrInit(&ORBITER_COMM_GsAddr, OS_SocketDomain_INET)       == OS_SUCCESS) &&
+            (OS_SocketAddrFromString(&ORBITER_COMM_GsAddr, ORBITER_COMM_GS_HOST) == OS_SUCCESS) &&
+            (OS_SocketAddrSetPort(&ORBITER_COMM_GsAddr, ORBITER_COMM_GS_PORT)    == OS_SUCCESS))
+        {
+            CFE_EVS_SendEvent(ORBITER_COMM_STARTUP_INF_EID, CFE_EVS_EventType_INFORMATION,
+                              "COMM: GS UDP ready %s:%u",
+                              ORBITER_COMM_GS_HOST, (unsigned int)ORBITER_COMM_GS_PORT);
+        }
+    }
 
     CFE_EVS_SendEvent(ORBITER_COMM_STARTUP_INF_EID, CFE_EVS_EventType_INFORMATION,
                       "COMM initialized, version %d.%d.%d",
@@ -310,6 +332,21 @@ static uint8 ORBITER_COMM_CountActiveTxns(void)
 }
 
 /* ---------------------------------------------------------------------------
+ * ORBITER_COMM_EmitAosFrame — Send payload to ground station via UDP (Phase D)
+ *
+ * Wraps OS_SocketSendTo so the emission is bounded and auditable.
+ * Called only when ORBITER_COMM_LinkState == ORBITER_COMM_LINK_AOS.
+ * --------------------------------------------------------------------------- */
+static void ORBITER_COMM_EmitAosFrame(const uint8 *payload, uint16 len)
+{
+    if (len > (uint16)ORBITER_COMM_AOS_FRAME_LEN)
+    {
+        return; /* bounds guard: never send more than one AOS frame */
+    }
+    (void)OS_SocketSendTo(ORBITER_COMM_GsSockId, payload, (uint32)len, &ORBITER_COMM_GsAddr);
+}
+
+/* ---------------------------------------------------------------------------
  * ORBITER_COMM_SendHkPacket — Publish comm HK telemetry and update LOS state
  * --------------------------------------------------------------------------- */
 static void ORBITER_COMM_SendHkPacket(void)
@@ -337,4 +374,11 @@ static void ORBITER_COMM_SendHkPacket(void)
     ORBITER_COMM_Data.HkTlm.TimeSuspect     = 0U;
 
     CFE_SB_TransmitMsg(&ORBITER_COMM_Data.HkTlm.Header, true);
+
+    /* Phase D: forward HK snapshot to ground station when link is live */
+    if (ORBITER_COMM_LinkState == ORBITER_COMM_LINK_AOS)
+    {
+        ORBITER_COMM_EmitAosFrame((const uint8 *)&ORBITER_COMM_Data.HkTlm,
+                                  (uint16)sizeof(ORBITER_COMM_Data.HkTlm));
+    }
 }

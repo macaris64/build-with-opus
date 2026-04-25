@@ -72,4 +72,17 @@ CFE_SB_MsgId_t      CFE_SB_ValueToMsgId(CFE_SB_MsgId_Atom_t MsgIdValue);
 int32 CFE_MSG_GetMsgId(const CFE_MSG_Message_t *MsgPtr, CFE_SB_MsgId_t *MsgId);
 int32 CFE_MSG_GetFcnCode(const CFE_MSG_Message_t *MsgPtr, CFE_MSG_FcnCode_t *FcnCode);
 
+/* ── OSAL network types (Phase D: UDP AOS-frame output) ──────────────────── */
+typedef uint32_t osal_id_t;
+typedef struct { uint8_t AddrData[28]; } OS_SockAddr_t;
+typedef enum { OS_SocketDomain_INET = 2 } OS_SocketDomain_t;
+typedef enum { OS_SocketType_DATAGRAM = 2 } OS_SocketType_t;
+#define OS_SUCCESS ((int32)0)
+
+int32 OS_SocketOpen(osal_id_t *sock_id, OS_SocketDomain_t Domain, OS_SocketType_t Type);
+int32 OS_SocketAddrInit(OS_SockAddr_t *Addr, OS_SocketDomain_t Domain);
+int32 OS_SocketAddrFromString(OS_SockAddr_t *Addr, const char *string);
+int32 OS_SocketAddrSetPort(OS_SockAddr_t *Addr, uint16 PortNum);
+int32 OS_SocketSendTo(osal_id_t sock_id, const void *buffer, uint32 buflen, const OS_SockAddr_t *RemoteAddr);
+
 #endif /* CFE_H */

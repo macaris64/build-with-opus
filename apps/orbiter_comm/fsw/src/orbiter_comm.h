@@ -118,6 +118,15 @@ typedef struct
     ORBITER_COMM_HkTlm_t HkTlm;
 } ORBITER_COMM_Data_t;
 
+/* ── Ground station AOS output (Phase D: cFS↔Rust integration) ──────────── */
+/* Destination for UDP AOS-frame emission during AOS link state. Override
+ * at build time via -DORBITER_COMM_GS_HOST='"x.x.x.x"' if needed. */
+#ifndef ORBITER_COMM_GS_HOST
+#define ORBITER_COMM_GS_HOST       "127.0.0.1"
+#endif
+#define ORBITER_COMM_GS_PORT       10000U
+#define ORBITER_COMM_AOS_FRAME_LEN 1024U
+
 /* ── Entry point ─────────────────────────────────────────────────────────── */
 void ORBITER_COMM_AppMain(void);
 
