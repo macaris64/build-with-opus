@@ -106,6 +106,17 @@ Each FreeRTOS MCU class gets a 16-APID block. Per-instance multiplicity is handl
 | `0x2A0`–`0x2AF` | `mcu_eps` | UART |
 | `0x2B0`–`0x2FF` | *reserved* | — |
 
+## Sim Injection Sub-Allocation (0x500–0x57F)
+
+SITL-only; never placed on any RF link. `sim_adapter` receives these on UDP port 5700 and routes valid packets to the cFE Software Bus. `CFS_FLIGHT_BUILD` guard ensures zero symbols in flight image.
+
+| APID | Macro | Purpose |
+|---|---|---|
+| `0x501` | `SIM_ADAPTER_HK_MID` | `sim_adapter` app housekeeping telemetry |
+| `0x502`–`0x53F` | *reserved* | Unallocated sim sideband |
+| `0x540`–`0x543` | *reserved* | Fault injection SPP APIDs (raw; no cFS MID; see `SIM_FAULT_APID_*` in `_defs/mids.h`) |
+| `0x544`–`0x57F` | *reserved* | Unallocated |
+
 ## AOS Virtual Channel (VC) Allocation
 
 AOS Transfer Frames multiplex multiple data streams on a single link. SAKURA-II uses three VCs on the orbiter-to-ground downlink (CCSDS 732.0-B):

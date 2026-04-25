@@ -45,7 +45,6 @@ static uint16 SIM_ADAPTER_Crc16(const uint8 *data, uint16 len);
 void SIM_ADAPTER_AppMain(void)
 {
     int32 status;
-    int32 bytes_recv;
 
     SIM_ADAPTER_Data.RunStatus = CFE_ES_RunStatus_APP_RUN;
 
@@ -58,7 +57,7 @@ void SIM_ADAPTER_AppMain(void)
     while (CFE_ES_RunLoop(&SIM_ADAPTER_Data.RunStatus) == true)
     {
         /* Non-blocking poll: returns byte count (>0) or negative error code. */
-        bytes_recv = OS_SocketRecvFrom(SIM_ADAPTER_Data.UdpSockId,
+        int32 bytes_recv = OS_SocketRecvFrom(SIM_ADAPTER_Data.UdpSockId,
                                        frame_buf, SIM_ADAPTER_FRAME_BUF_SIZE,
                                        NULL, 0);
         if (bytes_recv > 0)
