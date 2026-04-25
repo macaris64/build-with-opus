@@ -15,25 +15,22 @@ if(BUILD_TESTING)
 endif()
 
 # ── Gazebo shared library ─────────────────────────────────────────────────────
-find_package(gazebo QUIET)
+find_package(gz-sim8 QUIET)
+find_package(gz-plugin2 QUIET)
 
-if(NOT gazebo_FOUND)
-    message(WARNING "Gazebo not found — world environment plugin will not be built.")
+if(NOT gz-sim8_FOUND)
+    message(WARNING "gz-sim8 not found — world environment plugin will not be built.")
     return()
 endif()
-
-include_directories(
-    include
-    ${GAZEBO_INCLUDE_DIRS}
-)
-link_directories(${GAZEBO_LIBRARY_DIRS})
-list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
 
 add_library(world_environment_plugin SHARED
     src/world_environment_plugin.cpp
 )
 target_include_directories(world_environment_plugin PRIVATE include)
 target_compile_options(world_environment_plugin PRIVATE -Wall -Wextra -Werror)
-target_link_libraries(world_environment_plugin ${GAZEBO_LIBRARIES})
+target_link_libraries(world_environment_plugin
+    gz-sim8::gz-sim8
+    gz-plugin2::gz-plugin2
+)
 
 install(TARGETS world_environment_plugin DESTINATION lib)

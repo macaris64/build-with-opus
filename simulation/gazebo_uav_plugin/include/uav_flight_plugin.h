@@ -1,48 +1,50 @@
 #pragma once
 
-#include <gazebo/gazebo.hh>
-#include <gazebo/physics/physics.hh>
-#include <gazebo/common/common.hh>
-#include <gazebo/transport/transport.hh>
+#include <gz/sim/System.hh>
+#include <gz/sim/EntityComponentManager.hh>
+#include <gz/sim/EventManager.hh>
+#include <gz/transport/Node.hh>
+#include <gz/msgs/twist.pb.h>
 
 #include <mutex>
-
-namespace gazebo
-{
+#include <string>
 
 /**
- * UavFlightPlugin — Gazebo ModelPlugin for a UAV (fixed or rotary wing).
+ * UavFlightPlugin — Gazebo Harmonic system plugin for a UAV (rotary wing).
  *
  * Attach to a model SDF element:
  *   <plugin name="uav_flight" filename="libuav_flight_plugin.so"/>
  *
- * Subscribes to "~/<model_name>/cmd_vel" for attitude + thrust commands.
- * OnUpdate() applies torques to rotor joints each simulation step.
+ * Subscribes to "/model/<model_name>/cmd_vel" for thrust + yaw commands
+ * (linear.z = collective thrust N, angular.z = yaw rate rad/s).
+ * PreUpdate() applies net force/torque to the base link via
+ * ExternalWorldWrenchCmd each physics step.
+ *
+ * Phase 38: direct mapping; per-rotor torque model lands in Phase 42.
  */
-class UavFlightPlugin : public ModelPlugin
+class UavFlightPlugin :
+    public gz::sim::System,
+    public gz::sim::ISystemConfigure,
+    public gz::sim::ISystemPreUpdate
 {
 public:
-    UavFlightPlugin();
-    ~UavFlightPlugin() override;
+    void Configure(const gz::sim::Entity &entity,
+                   const std::shared_ptr<const sdf::Element> &sdf,
+                   gz::sim::EntityComponentManager &ecm,
+                   gz::sim::EventManager &eventMgr) override;
 
-    void Load(physics::ModelPtr model, sdf::ElementPtr sdf) override;
-    void Reset() override;
+    void PreUpdate(const gz::sim::UpdateInfo &info,
+                   gz::sim::EntityComponentManager &ecm) override;
 
 private:
-    void OnUpdate();
-    void OnCmdVel(ConstTwistPtr &msg);
+    void OnCmdVel(const gz::msgs::Twist &msg);
 
-    physics::ModelPtr    model_;
-    event::ConnectionPtr update_connection_;
+    gz::sim::Entity entity_{gz::sim::kNullEntity};
+    gz::sim::Entity linkEntity_{gz::sim::kNullEntity};
 
-    transport::NodePtr       node_;
-    transport::SubscriberPtr cmd_vel_sub_;
+    gz::transport::Node node_;
 
     double thrust_{0.0};
     double yaw_rate_{0.0};
     std::mutex cmd_vel_mutex_;
 };
-
-GZ_REGISTER_MODEL_PLUGIN(UavFlightPlugin)
-
-}  // namespace gazebo

@@ -15,25 +15,24 @@ if(BUILD_TESTING)
 endif()
 
 # ── Gazebo shared library ─────────────────────────────────────────────────────
-find_package(gazebo QUIET)
+find_package(gz-sim8 QUIET)
+find_package(gz-transport13 QUIET)
+find_package(gz-plugin2 QUIET)
 
-if(NOT gazebo_FOUND)
-    message(WARNING "Gazebo not found — UAV flight plugin will not be built.")
+if(NOT gz-sim8_FOUND)
+    message(WARNING "gz-sim8 not found — UAV flight plugin will not be built.")
     return()
 endif()
-
-include_directories(
-    include
-    ${GAZEBO_INCLUDE_DIRS}
-)
-link_directories(${GAZEBO_LIBRARY_DIRS})
-list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
 
 add_library(uav_flight_plugin SHARED
     src/uav_flight_plugin.cpp
 )
 target_include_directories(uav_flight_plugin PRIVATE include)
 target_compile_options(uav_flight_plugin PRIVATE -Wall -Wextra -Werror)
-target_link_libraries(uav_flight_plugin ${GAZEBO_LIBRARIES})
+target_link_libraries(uav_flight_plugin
+    gz-sim8::gz-sim8
+    gz-transport13::gz-transport13
+    gz-plugin2::gz-plugin2
+)
 
 install(TARGETS uav_flight_plugin DESTINATION lib)

@@ -15,25 +15,24 @@ if(BUILD_TESTING)
 endif()
 
 # ── Gazebo shared library ─────────────────────────────────────────────────────
-find_package(gazebo QUIET)
+find_package(gz-sim8 QUIET)
+find_package(gz-transport13 QUIET)
+find_package(gz-plugin2 QUIET)
 
-if(NOT gazebo_FOUND)
-    message(WARNING "Gazebo not found — cryobot physics plugin will not be built.")
+if(NOT gz-sim8_FOUND)
+    message(WARNING "gz-sim8 not found — cryobot physics plugin will not be built.")
     return()
 endif()
-
-include_directories(
-    include
-    ${GAZEBO_INCLUDE_DIRS}
-)
-link_directories(${GAZEBO_LIBRARY_DIRS})
-list(APPEND CMAKE_CXX_FLAGS "${GAZEBO_CXX_FLAGS}")
 
 add_library(cryobot_physics_plugin SHARED
     src/cryobot_physics_plugin.cpp
 )
 target_include_directories(cryobot_physics_plugin PRIVATE include)
 target_compile_options(cryobot_physics_plugin PRIVATE -Wall -Wextra -Werror)
-target_link_libraries(cryobot_physics_plugin ${GAZEBO_LIBRARIES})
+target_link_libraries(cryobot_physics_plugin
+    gz-sim8::gz-sim8
+    gz-transport13::gz-transport13
+    gz-plugin2::gz-plugin2
+)
 
 install(TARGETS cryobot_physics_plugin DESTINATION lib)
