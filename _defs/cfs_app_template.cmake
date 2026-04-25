@@ -25,6 +25,42 @@
 
 function(sakura_add_cfs_app app_name)
 
+    # ── cFS Runtime mode (SAKURA_CFS_RUNTIME=ON) ─────────────────────────────
+    # When cFE is available (submodule initialized), also build each app as a
+    # SHARED library that cFE loads via dlopen(). The CMocka OBJECT+test path
+    # below is built regardless — both modes coexist.
+    if(SAKURA_CFS_RUNTIME)
+        if(COMMAND add_cfe_app)
+            # Real cFE cmake framework is present (submodule initialized).
+            add_cfe_app(${app_name}
+                SOURCES ${CMAKE_CURRENT_SOURCE_DIR}/fsw/src/${app_name}.c
+            )
+            target_include_directories(${app_name} PUBLIC
+                $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/fsw/src>
+                $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/_defs>
+            )
+        else()
+            # Fallback: build a plain SHARED library with cFE naming convention.
+            add_library(${app_name}_runtime SHARED
+                ${CMAKE_CURRENT_SOURCE_DIR}/fsw/src/${app_name}.c
+            )
+            set_target_properties(${app_name}_runtime PROPERTIES
+                OUTPUT_NAME "${app_name}"
+                PREFIX "lib"
+            )
+            target_include_directories(${app_name}_runtime PUBLIC
+                $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/fsw/src>
+                $<BUILD_INTERFACE:${CMAKE_SOURCE_DIR}/_defs>
+            )
+            install(TARGETS ${app_name}_runtime
+                LIBRARY DESTINATION "${CMAKE_BINARY_DIR}/cf"
+            )
+            message(STATUS
+                "${app_name}: SAKURA_CFS_RUNTIME=ON — "
+                "built as cFE-loadable shared library (lib${app_name}.so)")
+        endif()
+    endif()
+
     # ── 0. Auto-generate test-file boilerplate if absent ─────────────────────
     # Scaffold contract: configure_file writes into the SOURCE TREE so that
     # add_executable() below can reference the file by its source path, and so

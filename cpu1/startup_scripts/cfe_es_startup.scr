@@ -1,0 +1,25 @@
+! cFE Executive Services Startup Script — SAKURA-II cpu1
+!
+! Format:
+!   CFE_APP, <object_file>, <entry_point>, <cfe_name>, <priority>, <stack_size>, <exception_action>, <cfe_app_flags>;
+!
+! exception_action: 0 = restart the app (CFE_ES_APP_ERROR_RESTART)
+! stack_size units: bytes
+! Priority range: 1 (high) – 255 (low); lower value = higher OS priority
+!
+! App load order is significant: apps that subscribe to MIDs published by other
+! apps should be registered after the publishers are ready. orbiter_cdh loads
+! last because it aggregates HK from all peers.
+!
+! Source of truth for MIDs: _defs/mids.h
+! App priority assignments: docs/architecture/01-orbiter-cfs.md §4 (task table)
+
+CFE_APP, /cf/libsample_app.so,      SAMPLE_APP_AppMain,       SAMPLE_APP,       100, 16384, 0x0, 0x0;
+CFE_APP, /cf/liborbiter_adcs.so,    ORBITER_ADCS_AppMain,     ORBITER_ADCS,      80, 16384, 0x0, 0x0;
+CFE_APP, /cf/liborbiter_comm.so,    ORBITER_COMM_AppMain,     ORBITER_COMM,      82, 16384, 0x0, 0x0;
+CFE_APP, /cf/liborbiter_power.so,   ORBITER_POWER_AppMain,    ORBITER_POWER,     85, 16384, 0x0, 0x0;
+CFE_APP, /cf/liborbiter_payload.so, ORBITER_PAYLOAD_AppMain,  ORBITER_PAYLOAD,   86, 16384, 0x0, 0x0;
+CFE_APP, /cf/libmcu_eps_gw.so,      MCU_EPS_GW_AppMain,       MCU_EPS_GW,        90, 16384, 0x0, 0x0;
+CFE_APP, /cf/libmcu_rwa_gw.so,      MCU_RWA_GW_AppMain,       MCU_RWA_GW,        90, 16384, 0x0, 0x0;
+CFE_APP, /cf/libmcu_payload_gw.so,  MCU_PAYLOAD_GW_AppMain,   MCU_PAYLOAD_GW,    90, 16384, 0x0, 0x0;
+CFE_APP, /cf/liborbiter_cdh.so,     ORBITER_CDH_AppMain,      ORBITER_CDH,      100, 32768, 0x0, 0x0;
