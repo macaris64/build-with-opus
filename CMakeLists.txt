@@ -27,6 +27,8 @@ add_subdirectory(apps/sample_app)
 add_subdirectory(apps/orbiter_cdh)
 add_subdirectory(apps/orbiter_adcs)
 add_subdirectory(apps/orbiter_comm)
+add_subdirectory(apps/orbiter_power)
+add_subdirectory(apps/orbiter_payload)
 
 # ── Simulation Plugins ────────────────────────────────────────────────────────
 # Gazebo plugins require Gazebo Harmonic to be installed. The subdirectory
