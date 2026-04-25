@@ -1,6 +1,19 @@
 //! TC uplink session demo — full three-stage uplink pipeline.
 //!
 //! Shows the complete ground-to-spacecraft telecommand path:
+// Examples use expect()/unwrap(), direct indexing, and long main() for clarity.
+// Suppress workspace deny/warn lints that would otherwise reject demo patterns.
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::too_many_lines,
+    clippy::cast_possible_truncation,
+    clippy::doc_markdown,
+    clippy::uninlined_format_args,
+    clippy::similar_names,
+    clippy::print_literal
+)]
 //!
 //! ```text
 //! Operator Intent (TcIntent)

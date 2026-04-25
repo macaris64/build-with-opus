@@ -3,6 +3,16 @@
 //! Exercises `MFileAssembler` — the ground station's protocol for receiving
 //! chunked file transfers from the relay satellite over AOS VC 2
 //! (ICD-relay-surface.md §6, Batch B2).
+// Examples intentionally use expect(), direct indexing, long main(), and
+// similar variable names (outcome1/outcome2) for readable scenario labelling.
+// Suppress workspace deny/warn lints that would otherwise reject these patterns.
+#![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::too_many_lines,
+    clippy::cast_possible_truncation,
+    clippy::similar_names
+)]
 //!
 //! Wire header (34 bytes, all multi-byte fields big-endian per Q-C8):
 //!

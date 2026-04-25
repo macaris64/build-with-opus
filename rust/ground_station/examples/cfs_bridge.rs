@@ -4,6 +4,17 @@
 //! raw cFE Software Bus message bytes — the exact bytes a cFS app writes to
 //! the Software Bus — using only `ccsds_wire`, which is the Q-C8 locus for
 //! all CCSDS big-endian pack/unpack in this workspace.
+// Examples use expect()/unwrap(), direct indexing, and vec! for readability.
+// Suppress workspace deny/warn lints that would otherwise reject demo patterns.
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::too_many_lines,
+    clippy::cast_possible_truncation,
+    clippy::doc_markdown,
+    clippy::useless_vec
+)]
 //!
 //! The cFE SB message format is a strict superset of CCSDS Space Packets:
 //!

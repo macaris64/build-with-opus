@@ -2,6 +2,16 @@
 //!
 //! Simulates a complete CCSDS File Delivery Protocol (CFDP 727.0-B-5)
 //! unacknowledged (Class 1) downlink session.
+// Examples use expect()/unwrap(), direct indexing, and long main() for clarity.
+// Suppress workspace deny/warn lints that would otherwise reject demo patterns.
+#![allow(
+    clippy::expect_used,
+    clippy::unwrap_used,
+    clippy::indexing_slicing,
+    clippy::too_many_lines,
+    clippy::cast_possible_truncation,
+    clippy::doc_markdown
+)]
 //!
 //! ```text
 //! SPACECRAFT                            GROUND

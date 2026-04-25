@@ -2,6 +2,18 @@
 //!
 //! Simulates a real spacecraft downlink session through every layer of the
 //! ground station ingest stack:
+// Examples intentionally use expect(), direct indexing, long main(), and
+// literal format args for readability. Suppress workspace deny/warn lints
+// that would otherwise reject these idiomatic demo patterns.
+#![allow(
+    clippy::expect_used,
+    clippy::indexing_slicing,
+    clippy::too_many_lines,
+    clippy::cast_possible_truncation,
+    clippy::doc_markdown,
+    clippy::uninlined_format_args,
+    clippy::print_literal,
+)]
 //!
 //! ```text
 //! SPACECRAFT (orbiter + rover apps)
