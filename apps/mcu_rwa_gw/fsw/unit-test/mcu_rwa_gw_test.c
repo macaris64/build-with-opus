@@ -1,0 +1,384 @@
+/*
+ * mcu_rwa_gw_test.c — CMocka unit tests for MCU_RWA_GW
+ *
+ * RED test (primary DoD requirement):
+ *   test_consecutive_frame_before_first_frame_dropped
+ *       — CF before FF → fragment-lost EVS event, no TransmitMsg
+ */
+
+#include <stdarg.h>
+#include <stddef.h>
+#include <setjmp.h>
+#include <cmocka.h>
+#include <string.h>
+
+#include "mcu_rwa_gw.h"
+
+/* ---------------------------------------------------------------------------
+ * CFE stubs
+ * --------------------------------------------------------------------------- */
+#ifdef UNIT_TEST
+
+int32 CFE_ES_RegisterApp(void)            { return (int32)mock(); }
+
+int32 CFE_EVS_Register(const void *F, uint16 N, uint16 S)
+{
+    (void)F; (void)N; (void)S;
+    return (int32)mock();
+}
+
+int32 CFE_SB_CreatePipe(CFE_SB_PipeId_t *P, uint16 D, const char *N)
+{
+    (void)D; (void)N;
+    *P = (CFE_SB_PipeId_t)mock();
+    return (int32)mock();
+}
+
+int32 CFE_SB_Subscribe(CFE_SB_MsgId_t MsgId, CFE_SB_PipeId_t PipeId)
+{
+    (void)MsgId; (void)PipeId;
+    return (int32)mock();
+}
+
+void CFE_EVS_SendEvent(uint16 EventID, uint16 EventType, const char *Spec, ...)
+{
+    (void)EventID; (void)EventType; (void)Spec;
+    function_called();
+}
+
+bool CFE_ES_RunLoop(uint32 *RunStatus)
+{
+    (void)RunStatus;
+    return (bool)mock();
+}
+
+int32 CFE_SB_ReceiveBuffer(CFE_SB_Buffer_t **BufPtr, CFE_SB_PipeId_t PipeId, int32 TimeOut)
+{
+    (void)PipeId; (void)TimeOut;
+    *BufPtr = (CFE_SB_Buffer_t *)mock();
+    return (int32)mock();
+}
+
+int32 CFE_SB_TransmitMsg(CFE_MSG_Message_t *MsgPtr, bool Inc)
+{
+    (void)MsgPtr; (void)Inc;
+    function_called();
+    return (int32)mock();
+}
+
+void CFE_ES_ExitApp(uint32 ExitStatus) { (void)ExitStatus; }
+
+int32 CFE_MSG_GetMsgId(const CFE_MSG_Message_t *M, CFE_SB_MsgId_t *Id)
+{
+    (void)M; *Id = (CFE_SB_MsgId_t)mock(); return CFE_SUCCESS;
+}
+
+int32 CFE_MSG_GetFcnCode(const CFE_MSG_Message_t *M, CFE_MSG_FcnCode_t *C)
+{
+    (void)M; *C = (CFE_MSG_FcnCode_t)mock(); return CFE_SUCCESS;
+}
+
+CFE_SB_MsgId_Atom_t CFE_SB_MsgIdToValue(CFE_SB_MsgId_t MsgId)
+{
+    return (CFE_SB_MsgId_Atom_t)MsgId;
+}
+
+CFE_SB_MsgId_t CFE_SB_ValueToMsgId(CFE_SB_MsgId_Atom_t MsgIdValue)
+{
+    return (CFE_SB_MsgId_t)MsgIdValue;
+}
+
+int32 MCU_RWA_GW_BusPoll(uint8 *FrameBuf, uint16 *FrameLen)
+{
+    uint16  len = (uint16)mock();
+    uint8  *src = (uint8 *)mock();
+    int32   ret = (int32)mock();
+    *FrameLen = len;
+    if (len > 0U && src != NULL)
+    {
+        memcpy(FrameBuf, src, (size_t)len);
+    }
+    return ret;
+}
+
+#endif /* UNIT_TEST */
+
+/* ---------------------------------------------------------------------------
+ * CAN test frames
+ * --------------------------------------------------------------------------- */
+/* Single-Frame: frame_type=0x00, 7B payload */
+static const uint8 SF_FRAME[]  = {0x00U, 0x01U, 0x02U, 0x03U, 0x04U, 0x05U, 0x06U, 0x07U};
+/* First-Frame:  frame_type=0x10, remainder = SPP-len high nibble + data */
+static const uint8 FF_FRAME[]  = {0x10U, 0x14U, 0x01U, 0x02U, 0x03U, 0x04U, 0x05U, 0x06U};
+/* Consecutive-Frame: frame_type=0x20 */
+static const uint8 CF_FRAME[]  = {0x20U, 0x07U, 0x08U, 0x09U, 0x0AU, 0x0BU, 0x0CU, 0x0DU};
+/* Unknown frame_type */
+static const uint8 UNK_FRAME[] = {0x50U, 0x00U};
+
+#define CAN_FRAME_LEN ((uint16)8U)
+#define UNK_FRAME_LEN ((uint16)2U)
+
+/* ---------------------------------------------------------------------------
+ * Helpers
+ * --------------------------------------------------------------------------- */
+static void queue_successful_init(void)
+{
+    will_return(CFE_ES_RegisterApp, CFE_SUCCESS);
+    will_return(CFE_EVS_Register,   CFE_SUCCESS);
+    will_return(CFE_SB_CreatePipe,  1);
+    will_return(CFE_SB_CreatePipe,  CFE_SUCCESS);
+    will_return(CFE_SB_Subscribe,   CFE_SUCCESS);
+    expect_function_call(CFE_EVS_SendEvent); /* startup event */
+}
+
+static void queue_idle_iteration(void)
+{
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)NULL);
+    will_return(CFE_SB_ReceiveBuffer, MCU_RWA_GW_BUS_NO_DATA);
+    will_return(MCU_RWA_GW_BusPoll, (uint16)0U);
+    will_return(MCU_RWA_GW_BusPoll, (uintptr_t)NULL);
+    will_return(MCU_RWA_GW_BusPoll, MCU_RWA_GW_BUS_NO_DATA);
+}
+
+/* ---------------------------------------------------------------------------
+ * Init failure paths
+ * --------------------------------------------------------------------------- */
+static void test_init_register_app_fails(void **state)
+{
+    (void)state;
+    will_return(CFE_ES_RegisterApp, CFE_ES_ERR_APP_REGISTER);
+    will_return(CFE_ES_RunLoop, false);
+    MCU_RWA_GW_AppMain();
+}
+
+static void test_init_evs_register_fails(void **state)
+{
+    (void)state;
+    will_return(CFE_ES_RegisterApp, CFE_SUCCESS);
+    will_return(CFE_EVS_Register,   CFE_EVS_APP_FILTER_OVERLOAD);
+    will_return(CFE_ES_RunLoop, false);
+    MCU_RWA_GW_AppMain();
+}
+
+static void test_init_pipe_create_fails(void **state)
+{
+    (void)state;
+    will_return(CFE_ES_RegisterApp, CFE_SUCCESS);
+    will_return(CFE_EVS_Register,   CFE_SUCCESS);
+    will_return(CFE_SB_CreatePipe,  0);
+    will_return(CFE_SB_CreatePipe,  CFE_SB_BAD_ARGUMENT);
+    expect_function_call(CFE_EVS_SendEvent);
+    will_return(CFE_ES_RunLoop, false);
+    MCU_RWA_GW_AppMain();
+}
+
+static void test_init_subscribe_cmd_mid_fails(void **state)
+{
+    (void)state;
+    will_return(CFE_ES_RegisterApp, CFE_SUCCESS);
+    will_return(CFE_EVS_Register,   CFE_SUCCESS);
+    will_return(CFE_SB_CreatePipe,  1);
+    will_return(CFE_SB_CreatePipe,  CFE_SUCCESS);
+    will_return(CFE_SB_Subscribe,   CFE_SB_MAX_MSGS_MET);
+    will_return(CFE_ES_RunLoop, false);
+    MCU_RWA_GW_AppMain();
+}
+
+static void test_init_success(void **state)
+{
+    (void)state;
+    queue_successful_init();
+    will_return(CFE_ES_RunLoop, false);
+    MCU_RWA_GW_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * SB receive error
+ * --------------------------------------------------------------------------- */
+static void test_sb_receive_error_increments_err_counter(void **state)
+{
+    (void)state;
+    queue_successful_init();
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)NULL);
+    will_return(CFE_SB_ReceiveBuffer, CFE_SB_PIPE_RD_ERR);
+    expect_function_call(CFE_EVS_SendEvent);
+    will_return(MCU_RWA_GW_BusPoll, (uint16)0U);
+    will_return(MCU_RWA_GW_BusPoll, (uintptr_t)NULL);
+    will_return(MCU_RWA_GW_BusPoll, MCU_RWA_GW_BUS_NO_DATA);
+    will_return(CFE_ES_RunLoop, false);
+    MCU_RWA_GW_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * GREEN TEST: Single-Frame publishes to SB
+ * --------------------------------------------------------------------------- */
+static void test_single_frame_publishes_to_sb(void **state)
+{
+    (void)state;
+    queue_successful_init();
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)NULL);
+    will_return(CFE_SB_ReceiveBuffer, MCU_RWA_GW_BUS_NO_DATA);
+    will_return(MCU_RWA_GW_BusPoll, CAN_FRAME_LEN);
+    will_return(MCU_RWA_GW_BusPoll, (uintptr_t)SF_FRAME);
+    will_return(MCU_RWA_GW_BusPoll, CFE_SUCCESS);
+    expect_function_call(CFE_SB_TransmitMsg);
+    will_return(CFE_SB_TransmitMsg, CFE_SUCCESS);
+    will_return(CFE_ES_RunLoop, false);
+    MCU_RWA_GW_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * GREEN TEST: First-Frame followed by Consecutive-Frame → both valid
+ *
+ * Two iterations: FF then CF — both publish.
+ * --------------------------------------------------------------------------- */
+static void test_first_frame_then_consecutive_frame_valid(void **state)
+{
+    (void)state;
+    queue_successful_init();
+    /* Iteration 1: First-Frame */
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)NULL);
+    will_return(CFE_SB_ReceiveBuffer, MCU_RWA_GW_BUS_NO_DATA);
+    will_return(MCU_RWA_GW_BusPoll, CAN_FRAME_LEN);
+    will_return(MCU_RWA_GW_BusPoll, (uintptr_t)FF_FRAME);
+    will_return(MCU_RWA_GW_BusPoll, CFE_SUCCESS);
+    expect_function_call(CFE_SB_TransmitMsg);
+    will_return(CFE_SB_TransmitMsg, CFE_SUCCESS);
+    /* Iteration 2: Consecutive-Frame */
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)NULL);
+    will_return(CFE_SB_ReceiveBuffer, MCU_RWA_GW_BUS_NO_DATA);
+    will_return(MCU_RWA_GW_BusPoll, CAN_FRAME_LEN);
+    will_return(MCU_RWA_GW_BusPoll, (uintptr_t)CF_FRAME);
+    will_return(MCU_RWA_GW_BusPoll, CFE_SUCCESS);
+    expect_function_call(CFE_SB_TransmitMsg);
+    will_return(CFE_SB_TransmitMsg, CFE_SUCCESS);
+    will_return(CFE_ES_RunLoop, false);
+    MCU_RWA_GW_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * RED TEST: Consecutive-Frame before First-Frame → dropped, no TransmitMsg
+ *
+ * Given:  init succeeds; MCU_RWA_GW_CanInProgress = 0 (no prior FF)
+ * When:   CAN frame with frame_type=0x20 (CF) arrives
+ * Then:   MCU_RWA_GW_CAN_FRAGMENT_LOST_ERR_EID emitted; no TransmitMsg
+ * --------------------------------------------------------------------------- */
+static void test_consecutive_frame_before_first_frame_dropped(void **state)
+{
+    (void)state;
+    queue_successful_init();
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)NULL);
+    will_return(CFE_SB_ReceiveBuffer, MCU_RWA_GW_BUS_NO_DATA);
+    will_return(MCU_RWA_GW_BusPoll, CAN_FRAME_LEN);
+    will_return(MCU_RWA_GW_BusPoll, (uintptr_t)CF_FRAME);
+    will_return(MCU_RWA_GW_BusPoll, CFE_SUCCESS);
+    expect_function_call(CFE_EVS_SendEvent); /* FRAGMENT_LOST event */
+    /* TransmitMsg must NOT be called */
+    will_return(CFE_ES_RunLoop, false);
+    MCU_RWA_GW_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * Unknown frame_type is rejected (no TransmitMsg)
+ * --------------------------------------------------------------------------- */
+static void test_unknown_frame_type_dropped(void **state)
+{
+    (void)state;
+    queue_successful_init();
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)NULL);
+    will_return(CFE_SB_ReceiveBuffer, MCU_RWA_GW_BUS_NO_DATA);
+    will_return(MCU_RWA_GW_BusPoll, UNK_FRAME_LEN);
+    will_return(MCU_RWA_GW_BusPoll, (uintptr_t)UNK_FRAME);
+    will_return(MCU_RWA_GW_BusPoll, CFE_SUCCESS);
+    expect_function_call(CFE_EVS_SendEvent);
+    will_return(CFE_ES_RunLoop, false);
+    MCU_RWA_GW_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * Bus silence threshold triggers EVS event
+ * --------------------------------------------------------------------------- */
+static void test_silence_threshold_triggers_evs_event(void **state)
+{
+    (void)state;
+    queue_successful_init();
+    queue_idle_iteration();
+    queue_idle_iteration();
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)NULL);
+    will_return(CFE_SB_ReceiveBuffer, MCU_RWA_GW_BUS_NO_DATA);
+    will_return(MCU_RWA_GW_BusPoll, (uint16)0U);
+    will_return(MCU_RWA_GW_BusPoll, (uintptr_t)NULL);
+    will_return(MCU_RWA_GW_BusPoll, MCU_RWA_GW_BUS_NO_DATA);
+    expect_function_call(CFE_EVS_SendEvent);
+    will_return(CFE_ES_RunLoop, false);
+    MCU_RWA_GW_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * Bus driver generic error increments ErrCounter
+ * --------------------------------------------------------------------------- */
+static void test_bus_driver_error_increments_err_counter(void **state)
+{
+    (void)state;
+    queue_successful_init();
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)NULL);
+    will_return(CFE_SB_ReceiveBuffer, MCU_RWA_GW_BUS_NO_DATA);
+    will_return(MCU_RWA_GW_BusPoll, (uint16)0U);
+    will_return(MCU_RWA_GW_BusPoll, (uintptr_t)NULL);
+    will_return(MCU_RWA_GW_BusPoll, CFE_SB_PIPE_RD_ERR);
+    will_return(CFE_ES_RunLoop, false);
+    MCU_RWA_GW_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * TC forwarding: SB receive success does not error
+ * --------------------------------------------------------------------------- */
+static void test_tc_received_forwarded_to_bus(void **state)
+{
+    (void)state;
+    static CFE_SB_Buffer_t buf;
+    memset(&buf, 0, sizeof(buf));
+
+    queue_successful_init();
+    will_return(CFE_ES_RunLoop,       true);
+    will_return(CFE_SB_ReceiveBuffer, (uintptr_t)&buf);
+    will_return(CFE_SB_ReceiveBuffer, CFE_SUCCESS);
+    will_return(MCU_RWA_GW_BusPoll, (uint16)0U);
+    will_return(MCU_RWA_GW_BusPoll, (uintptr_t)NULL);
+    will_return(MCU_RWA_GW_BusPoll, MCU_RWA_GW_BUS_NO_DATA);
+    will_return(CFE_ES_RunLoop, false);
+    MCU_RWA_GW_AppMain();
+}
+
+/* ---------------------------------------------------------------------------
+ * Test runner
+ * --------------------------------------------------------------------------- */
+int main(void)
+{
+    const struct CMUnitTest tests[] = {
+        cmocka_unit_test(test_init_register_app_fails),
+        cmocka_unit_test(test_init_evs_register_fails),
+        cmocka_unit_test(test_init_pipe_create_fails),
+        cmocka_unit_test(test_init_subscribe_cmd_mid_fails),
+        cmocka_unit_test(test_init_success),
+        cmocka_unit_test(test_sb_receive_error_increments_err_counter),
+        cmocka_unit_test(test_single_frame_publishes_to_sb),
+        cmocka_unit_test(test_first_frame_then_consecutive_frame_valid),
+        /* RED test — primary DoD requirement */
+        cmocka_unit_test(test_consecutive_frame_before_first_frame_dropped),
+        cmocka_unit_test(test_unknown_frame_type_dropped),
+        cmocka_unit_test(test_silence_threshold_triggers_evs_event),
+        cmocka_unit_test(test_bus_driver_error_increments_err_counter),
+        cmocka_unit_test(test_tc_received_forwarded_to_bus),
+    };
+    return cmocka_run_group_tests(tests, NULL, NULL);
+}
