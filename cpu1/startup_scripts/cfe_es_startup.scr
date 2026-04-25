@@ -20,6 +20,7 @@ CFE_APP, /cf/liborbiter_comm.so,    ORBITER_COMM_AppMain,     ORBITER_COMM,     
 CFE_APP, /cf/liborbiter_power.so,   ORBITER_POWER_AppMain,    ORBITER_POWER,     85, 16384, 0x0, 0x0;
 CFE_APP, /cf/liborbiter_payload.so, ORBITER_PAYLOAD_AppMain,  ORBITER_PAYLOAD,   86, 16384, 0x0, 0x0;
 CFE_APP, /cf/libmcu_eps_gw.so,      MCU_EPS_GW_AppMain,       MCU_EPS_GW,        90, 16384, 0x0, 0x0;
+CFE_APP, /cf/libsim_adapter.so,    SIM_ADAPTER_AppMain,      SIM_ADAPTER,       95, 16384, 0x0, 0x0;
 CFE_APP, /cf/libmcu_rwa_gw.so,      MCU_RWA_GW_AppMain,       MCU_RWA_GW,        90, 16384, 0x0, 0x0;
 CFE_APP, /cf/libmcu_payload_gw.so,  MCU_PAYLOAD_GW_AppMain,   MCU_PAYLOAD_GW,    90, 16384, 0x0, 0x0;
 CFE_APP, /cf/liborbiter_cdh.so,     ORBITER_CDH_AppMain,      ORBITER_CDH,      100, 32768, 0x0, 0x0;

@@ -27,6 +27,7 @@ set(MISSION_APPS
     mcu_payload_gw
     mcu_rwa_gw
     mcu_eps_gw
+    sim_adapter
 )
 
 message(STATUS "Mission: ${MISSION_NAME}  SCID: ${SPACECRAFT_ID}  Apps: ${MISSION_APPS}")

@@ -1,0 +1,102 @@
+#ifndef CFE_H
+#define CFE_H
+
+/*
+ * cfe.h — Minimal cFE / OSAL type and constant stubs for sim_adapter standalone builds.
+ *
+ * Extends orbiter_comm's stub pattern with:
+ *   - CFE_EVS_BinFilter_t (event filter struct for EVS_Register)
+ *   - CFE_MSG_SetMsgId / CFE_MSG_SetSize (message header setters)
+ *   - OS_SocketBind / OS_SocketRecvFrom (OSAL receive-side socket API)
+ *   - OS_ERR_TIMEOUT constant
+ *
+ * MISRA C:2012 Rule 20.5 deviation: conditionally compiled; superseded by the
+ * real cfe.h when cFS is present on the include path ahead of this stub.
+ */
+
+#include <stddef.h>
+#include <stdint.h>
+#include <stdbool.h>
+#include <stdarg.h>
+
+/* ── Primitive typedefs (mirror cFE common_types.h) ─────────────────────── */
+typedef int32_t  int32;
+typedef uint16_t uint16;
+typedef uint32_t uint32;
+typedef uint8_t  uint8;
+
+/* ── Software Bus types ──────────────────────────────────────────────────── */
+typedef uintptr_t           CFE_SB_PipeId_t;
+typedef uint32_t            CFE_SB_MsgId_Atom_t;
+typedef CFE_SB_MsgId_Atom_t CFE_SB_MsgId_t;
+
+/* CCSDS primary-header minimum (6 bytes) plus secondary-header stub (10 bytes) */
+typedef struct { uint8 Byte[16]; } CFE_MSG_Message_t;
+typedef struct { CFE_MSG_Message_t Msg; } CFE_SB_Buffer_t;
+typedef uint16_t CFE_MSG_FcnCode_t;
+
+/* ── Event Services types ────────────────────────────────────────────────── */
+typedef struct {
+    uint16 EventID;
+    uint16 Mask;
+} CFE_EVS_BinFilter_t;
+
+/* ── Status codes ────────────────────────────────────────────────────────── */
+#define CFE_SUCCESS                  ((int32) 0)
+#define CFE_SB_BAD_ARGUMENT          ((int32)-1)
+#define CFE_SB_PIPE_RD_ERR           ((int32)-2)
+#define CFE_SB_MAX_MSGS_MET          ((int32)-3)
+#define CFE_ES_ERR_APP_REGISTER      ((int32)-4)
+#define CFE_EVS_APP_FILTER_OVERLOAD  ((int32)-5)
+
+/* ── Executive Services constants ───────────────────────────────────────── */
+#define CFE_ES_RunStatus_APP_RUN    1U
+#define CFE_ES_RunStatus_APP_ERROR  2U
+#define CFE_ES_RunStatus_APP_EXIT   3U
+
+/* ── Software Bus constants ─────────────────────────────────────────────── */
+#define CFE_SB_PEND_FOREVER         ((int32)-1)
+#define CFE_SB_INVALID_MSG_ID       ((CFE_SB_MsgId_t)0xFFFFU)
+
+/* ── Event Services constants ────────────────────────────────────────────── */
+#define CFE_EVS_EventFilter_BINARY    1U
+#define CFE_EVS_EventType_INFORMATION 1U
+#define CFE_EVS_EventType_ERROR       4U
+
+/* ── API declarations (implemented by cFE or by UNIT_TEST stubs) ─────────── */
+int32 CFE_ES_RegisterApp(void);
+bool  CFE_ES_RunLoop(uint32 *RunStatus);
+void  CFE_ES_ExitApp(uint32 ExitStatus);
+
+int32 CFE_EVS_Register(const void *Filters, uint16 NumFilters, uint16 FilterScheme);
+void  CFE_EVS_SendEvent(uint16 EventID, uint16 EventType, const char *Spec, ...);
+
+int32 CFE_SB_CreatePipe(CFE_SB_PipeId_t *PipeIdPtr, uint16 Depth, const char *PipeName);
+int32 CFE_SB_Subscribe(CFE_SB_MsgId_t MsgId, CFE_SB_PipeId_t PipeId);
+int32 CFE_SB_ReceiveBuffer(CFE_SB_Buffer_t **BufPtr, CFE_SB_PipeId_t PipeId, int32 TimeOut);
+int32 CFE_SB_TransmitMsg(CFE_MSG_Message_t *MsgPtr, bool IncrementSequenceCount);
+CFE_SB_MsgId_Atom_t CFE_SB_MsgIdToValue(CFE_SB_MsgId_t MsgId);
+CFE_SB_MsgId_t      CFE_SB_ValueToMsgId(CFE_SB_MsgId_Atom_t MsgIdValue);
+
+int32 CFE_MSG_GetMsgId(const CFE_MSG_Message_t *MsgPtr, CFE_SB_MsgId_t *MsgId);
+int32 CFE_MSG_GetFcnCode(const CFE_MSG_Message_t *MsgPtr, CFE_MSG_FcnCode_t *FcnCode);
+int32 CFE_MSG_SetMsgId(CFE_MSG_Message_t *MsgPtr, CFE_SB_MsgId_t MsgId);
+int32 CFE_MSG_SetSize(CFE_MSG_Message_t *MsgPtr, uint32 TotalMsgSize);
+
+/* ── OSAL network types ──────────────────────────────────────────────────── */
+typedef uint32_t osal_id_t;
+typedef struct { uint8_t AddrData[28]; } OS_SockAddr_t;
+typedef enum { OS_SocketDomain_INET = 2 } OS_SocketDomain_t;
+typedef enum { OS_SocketType_DATAGRAM = 2 } OS_SocketType_t;
+
+#define OS_SUCCESS       ((int32) 0)
+#define OS_ERR_TIMEOUT   ((int32)-10)
+
+int32 OS_SocketOpen(osal_id_t *sock_id, OS_SocketDomain_t Domain, OS_SocketType_t Type);
+int32 OS_SocketAddrInit(OS_SockAddr_t *Addr, OS_SocketDomain_t Domain);
+int32 OS_SocketAddrSetPort(OS_SockAddr_t *Addr, uint16 PortNum);
+int32 OS_SocketBind(osal_id_t sock_id, const OS_SockAddr_t *Addr);
+int32 OS_SocketRecvFrom(osal_id_t sock_id, void *buffer, uint32 buflen,
+                        OS_SockAddr_t *RemoteAddr, int32 timeout_ms);
+
+#endif /* CFE_H */
