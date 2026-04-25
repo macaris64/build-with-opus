@@ -25,6 +25,7 @@ from launch.actions import (
     ExecuteProcess,
     TimerAction,
 )
+from launch.conditions import UnlessCondition
 from launch.substitutions import LaunchConfiguration, PathJoinSubstitution
 from launch_ros.actions import LifecycleNode, Node
 from launch_ros.substitutions import FindPackageShare
@@ -62,6 +63,15 @@ def generate_launch_description() -> LaunchDescription:
         description="Run Gazebo without GUI (true=headless, false=with GUI)",
     )
 
+    # When running inside Docker Compose the gazebo service already owns the
+    # gz sim process.  Set use_external_gz:=true to skip starting a second
+    # instance and only launch the bridge and teleop_node.
+    use_external_gz_arg = DeclareLaunchArgument(
+        "use_external_gz",
+        default_value="false",
+        description="Skip launching the Gazebo server (use when Gazebo runs externally)",
+    )
+
     # ── Process 1: Gazebo Harmonic server ────────────────────────────────────
     # gz sim -r -s loads the world in headless (server-only) mode.
     # The -r flag starts physics immediately (no manual 'play' required).
@@ -75,6 +85,7 @@ def generate_launch_description() -> LaunchDescription:
         ],
         output="screen",
         name="gz_sim_server",
+        condition=UnlessCondition(LaunchConfiguration("use_external_gz")),
     )
 
     # ── Process 2: ros_gz_bridge ─────────────────────────────────────────────
@@ -134,6 +145,7 @@ def generate_launch_description() -> LaunchDescription:
         params_file_arg,
         sdf_path_arg,
         headless_arg,
+        use_external_gz_arg,
         gz_server,
         gz_bridge,
         teleop_node,
