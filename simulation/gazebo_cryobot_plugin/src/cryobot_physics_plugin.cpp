@@ -1,4 +1,5 @@
 #include "cryobot_physics_plugin.h"
+#include "cryobot_physics_core.h"
 
 #include <gazebo/msgs/msgs.hh>
 
@@ -6,13 +7,6 @@
 
 namespace gazebo
 {
-
-/* Tether linear stiffness [N/m] — conservative estimate for Phase 38.
- * Exact value calibrated against thermal-drill power budget in Phase 42+. */
-static constexpr double TETHER_STIFFNESS_NM = 500.0;
-
-/* Nominal tether rest length [m] — updated at runtime in future phases. */
-static constexpr double TETHER_REST_LEN_M = 10.0;
 
 CrybotPhysicsPlugin::CrybotPhysicsPlugin()
 : model_(nullptr)
@@ -78,26 +72,25 @@ void CrybotPhysicsPlugin::OnUpdate()
 
     /* Compute approximate depth from world origin as a proxy for tether
      * extension. A full Phase 42+ implementation reads the tether joint
-     * state directly.  Extension = max(0, depth - rest_len). */
+     * state directly. */
     const double depth = -base->GetWorldPose().pos.z;
-    const double extension = (depth > TETHER_REST_LEN_M)
-                             ? (depth - TETHER_REST_LEN_M) : 0.0;
 
-    double tension  = 0.0;
-    double descent  = 0.0;
+    double descent = 0.0;
     {
         std::lock_guard<std::mutex> lock(cmd_vel_mutex_);
-        tether_tension_n_ = TETHER_STIFFNESS_NM * extension;
-        tension  = tether_tension_n_;
-        descent  = descent_rate_ms_;
+        descent = descent_rate_ms_;
     }
 
-    /* Apply tether restoring force (upward) + commanded descent force.
-     * Net force = thermal-drill thrust (from descent_rate PD controller,
-     * Phase 42) - tether_tension.  For Phase 38 we apply a proportional
-     * descent force directly. */
-    const double net_force_z = (descent * 10.0) - tension;
-    base->AddRelativeForce(math::Vector3(0.0, 0.0, net_force_z));
+    const auto step = gazebo_cryobot::compute_step(depth, descent);
+
+    {
+        std::lock_guard<std::mutex> lock(cmd_vel_mutex_);
+        tether_tension_n_ = step.tether_tension_n;
+    }
+
+    /* Apply net axial force: tether restoring (upward) + descent thrust.
+     * Phase 42+ replaces the proportional mapping with a PD controller. */
+    base->AddRelativeForce(math::Vector3(0.0, 0.0, step.net_force_z));
 }
 
 }  // namespace gazebo

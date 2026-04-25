@@ -191,7 +191,7 @@ A milestone phase is `[ TEST ]`-badged (§4.2) and produces a **hard deliverable
 | `[x]` 35 | 🟢 FEAT | MCU gateway apps (SpW / CAN / UART) | `feat/phase-35-mcu-gateways` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[x]` 36 | 🟢 FEAT | `ros2_ws/src/rover_common` | `feat/phase-36-rover-common` | `claude-sonnet-4-6` | L | 100 % ✅ |
 | `[x]` 37 | 🟢 FEAT | `rover_land` + `rover_uav` + `rover_cryobot` | `feat/phase-37-rover-classes` | `claude-sonnet-4-6` | M | 100 % ✅ |
-| `[ ]` 38 | 🟢 FEAT | Gazebo UAV / cryobot / world plugins | `feat/phase-38-gazebo-plugins` | `claude-sonnet-4-6` | M | 100 % ✅ |
+| `[x]` 38 | 🟢 FEAT | Gazebo UAV / cryobot / world plugins | `feat/phase-38-gazebo-plugins` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[ ]` 39 | 🟢 FEAT | `simulation/fault_injector` (0x540–0x543 sideband) | `feat/phase-39-fault-injector` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[ ]` 40 | 🧪 TEST | **MILESTONE 4/5 — SITL Integrated Binary** | `feat/phase-40-sitl-integration` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[ ]` 41 | 🟢 FEAT | `apps/freertos_relay` (smallsat primary FSW) | `feat/phase-41-freertos-relay` | `claude-sonnet-4-6` | H | 100 % ✅ |
