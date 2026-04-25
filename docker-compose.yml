@@ -1,0 +1,109 @@
+services:
+  cfs:
+    image: ubuntu:22.04
+    container_name: sakura_cfs
+    build:
+      context: .
+      dockerfile: .ci/cfs.Dockerfile
+    volumes:
+      - ./build_cfs:/app/build_cfs:ro
+      - cfs_logs:/tmp/cfs
+    command: >
+      bash -c "
+        mkdir -p /tmp/cfs/log &&
+        /app/build_cfs/cpu1/core-cpu1 2>&1 | tee /tmp/cfs/log/cfs_es_startup.log
+      "
+    networks:
+      - sakura-net
+    healthcheck:
+      test: ["CMD", "grep", "-c", "App Initialized", "/tmp/cfs/log/cfs_es_startup.log"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+
+  gazebo:
+    image: ubuntu:22.04
+    container_name: sakura_gazebo
+    build:
+      context: .
+      dockerfile: .ci/gazebo.Dockerfile
+    volumes:
+      - ./simulation:/app/simulation:ro
+    command: >
+      gz sim -r -s /app/simulation/worlds/mars_surrogate.sdf
+    networks:
+      - sakura-net
+    depends_on:
+      cfs:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "pgrep gz || exit 1"]
+      interval: 5s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  ros2:
+    image: spaceros/space-ros:latest
+    container_name: sakura_ros2
+    build:
+      context: .
+      dockerfile: .ci/ros2.Dockerfile
+    volumes:
+      - ./ros2_ws:/workspace/ros2_ws:ro
+    command: >
+      bash -c "
+        source /opt/ros/spaceros/setup.bash &&
+        cd /workspace &&
+        colcon build --base-paths ros2_ws/src --symlink-install &&
+        source ros2_ws/install/setup.bash &&
+        ros2 launch rover_bringup sim.launch.py headless:=true
+      "
+    environment:
+      - RMW_IMPLEMENTATION=rmw_fastrtps_cpp
+      - GAZEBO_MASTER_URI=http://gazebo:11345
+    networks:
+      - sakura-net
+    depends_on:
+      gazebo:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ros2 node list 2>/dev/null | grep -q teleop_node || exit 1"]
+      interval: 5s
+      timeout: 10s
+      retries: 12
+      start_period: 30s
+
+  ground_station:
+    image: rust:1.77-slim
+    container_name: sakura_ground_station
+    build:
+      context: .
+      dockerfile: .ci/ground_station.Dockerfile
+    command: >
+      bash -c "
+        cd /app &&
+        cargo build -p ground_station --release &&
+        RUST_LOG=info ./target/release/ground_station 0.0.0.0:10000
+      "
+    ports:
+      - "10000:10000/udp"
+    networks:
+      - sakura-net
+    depends_on:
+      cfs:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "ss -ulnp | grep -q ':10000' || exit 1"]
+      interval: 3s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+networks:
+  sakura-net:
+    driver: bridge
+
+volumes:
+  cfs_logs:
