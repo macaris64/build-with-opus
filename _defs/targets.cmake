@@ -21,6 +21,12 @@ set(MISSION_APPS
     sample_app
     orbiter_cdh
     orbiter_adcs
+    orbiter_comm
+    orbiter_power
+    orbiter_payload
+    mcu_payload_gw
+    mcu_rwa_gw
+    mcu_eps_gw
 )
 
 message(STATUS "Mission: ${MISSION_NAME}  SCID: ${SPACECRAFT_ID}  Apps: ${MISSION_APPS}")
