@@ -13,7 +13,7 @@ void WorldEnvironmentPlugin::Configure(
     entity_ = entity;
     gz::sim::World world(entity);
 
-    const std::string name = world.Name(ecm);
+    const std::string name = world.Name(ecm).value_or("unknown");
     const auto gravOpt = world.Gravity(ecm);
 
     gzmsg << "[WorldEnvironmentPlugin] Loaded world: " << name << "\n";
@@ -39,3 +39,4 @@ void WorldEnvironmentPlugin::PostUpdate(
 
 GZ_ADD_PLUGIN(WorldEnvironmentPlugin, gz::sim::System,
               gz::sim::ISystemConfigure, gz::sim::ISystemPostUpdate)
+GZ_ADD_PLUGIN_ALIAS(WorldEnvironmentPlugin, "world_environment")

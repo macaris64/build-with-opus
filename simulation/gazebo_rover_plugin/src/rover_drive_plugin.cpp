@@ -72,3 +72,4 @@ void RoverDrivePlugin::OnCmdVel(const gz::msgs::Twist &msg)
 
 GZ_ADD_PLUGIN(RoverDrivePlugin, gz::sim::System,
               gz::sim::ISystemConfigure, gz::sim::ISystemPreUpdate)
+GZ_ADD_PLUGIN_ALIAS(RoverDrivePlugin, "rover_drive")

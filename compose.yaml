@@ -68,14 +68,17 @@ services:
     command: >
       bash -c "
         if [ -n \"$$DISPLAY\" ]; then
-          gz sim -r /app/simulation/worlds/mars_surrogate.sdf;
+          gz sim server -r /app/simulation/worlds/mars_surrogate.sdf &
+          sleep 4 &&
+          gz sim gui &
+          wait;
         else
           gz sim -r -s /app/simulation/worlds/mars_surrogate.sdf;
         fi
       "
     environment:
       - DISPLAY
-      - GZ_IP=gazebo
+      - GZ_IP=127.0.0.1
       - GZ_PARTITION=sakura
       - LIBGL_ALWAYS_SOFTWARE=1
       - MESA_GL_VERSION_OVERRIDE=3.3
@@ -107,6 +110,8 @@ services:
       - ./ros2_ws:/workspace/ros2_ws:ro
     command: >
       bash -c "
+        export GZ_RELAY=$$(getent hosts gazebo | awk '{print $$1}') &&
+        source /opt/ros/jazzy/setup.bash &&
         source /opt/ros/spaceros/setup.bash &&
         cd /workspace &&
         colcon build --base-paths ros2_ws/src --symlink-install &&
@@ -115,7 +120,6 @@ services:
       "
     environment:
       - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
-      - GZ_IP=gazebo
       - GZ_PARTITION=sakura
       - LAUNCH_MODE=sim
     networks:

@@ -31,3 +31,35 @@ set(MISSION_APPS
 )
 
 message(STATUS "Mission: ${MISSION_NAME}  SCID: ${SPACECRAFT_ID}  Apps: ${MISSION_APPS}")
+
+# ── cFE CPU Target Configuration ──────────────────────────────────────────────
+# Required by cFE's mission_build.cmake / read_targetconfig() when
+# SAKURA_CFS_RUNTIME=ON.  Defines one native Linux CPU (cpu1).
+#
+# cpu1_SYSTEM "native" → cFE builds for the host without a cross toolchain.
+# cpu1_PSP_MODULELIST "pc-linux" → links the Linux PSP module into core-cpu1.
+# cpu1_FILELIST → cfe_es_startup.scr is searched in MISSION_DEFS (_defs/).
+#   cFE looks for _defs/cpu1_cfe_es_startup.scr (cpu-prefixed) first, then
+#   _defs/cfe_es_startup.scr.  We supply the prefixed name so the same file
+#   can vary per CPU in multi-CPU missions.
+#
+# MISSION_MODULE_SEARCH_PATH default includes "apps/" (relative to MISSION_SOURCE_DIR
+# = repo root) so all apps/*/  directories are found automatically.
+# osal and psp are found via repo-root symlinks (cfe/ osal/ psp/) created by
+#   git checkout; these bridge to cfs/cFE, cfs/osal, cfs/PSP respectively.
+SET(MISSION_CPUNAMES cpu1)
+SET(cpu1_PROCESSORID 1)
+SET(cpu1_APPLIST
+    sample_app
+    orbiter_cdh
+    orbiter_adcs
+    orbiter_comm
+    orbiter_power
+    orbiter_payload
+    mcu_payload_gw
+    mcu_rwa_gw
+    mcu_eps_gw
+    sim_adapter
+)
+SET(cpu1_FILELIST cfe_es_startup.scr)
+SET(cpu1_SYSTEM native)

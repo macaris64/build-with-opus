@@ -35,6 +35,13 @@ if(SAKURA_CFS_RUNTIME)
             "Run: git submodule update --init --recursive\n"
             "See cfs/README.md for details.")
     endif()
+    # cFE's mission_build.cmake defaults MISSION_SOURCE_DIR to the cFE parent
+    # directory (cfs/).  Override to repo root so it finds _defs/ (named _defs,
+    # matching the *_defs glob) and the apps/ search path resolves correctly.
+    # Symlinks cfe/ osal/ psp/ at repo root bridge the cfs/cFE cfs/osal cfs/PSP
+    # layout to the paths cFE's default MISSION_MODULE_SEARCH_PATH expects.
+    set(MISSION_SOURCE_DIR "${CMAKE_SOURCE_DIR}" CACHE PATH
+        "Top level mission source directory (overrides cFE default)")
     # cFE's top-level cmake sets up add_cfe_app() and related helpers.
     add_subdirectory(cfs/cFE)
     message(STATUS "SAKURA_CFS_RUNTIME: ON — apps will be linked as cFE shared libraries")

@@ -80,3 +80,4 @@ void UavFlightPlugin::OnCmdVel(const gz::msgs::Twist &msg)
 
 GZ_ADD_PLUGIN(UavFlightPlugin, gz::sim::System,
               gz::sim::ISystemConfigure, gz::sim::ISystemPreUpdate)
+GZ_ADD_PLUGIN_ALIAS(UavFlightPlugin, "uav_flight")

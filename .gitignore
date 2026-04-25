@@ -19,6 +19,22 @@ rust/_lint_probe/Cargo.lock
 # ─── C / CMake ────────────────────────────────────────────────────────────────
 build/
 build_cov/
+# cFS cmake build outputs — only the stub binary is tracked
+build_cfs/apps/
+build_cfs/cfe_build_env.in
+build_cfs/cfe_module_version.in
+build_cfs/cfs/
+build_cfs/cmake_install.cmake
+build_cfs/CTestTestfile.cmake
+build_cfs/DartConfiguration.tcl
+build_cfs/docs/
+build_cfs/inc/
+build_cfs/Makefile
+build_cfs/mission_vars.cache
+build_cfs/native/
+build_cfs/simulation/
+build_cfs/src/
+build_cfs/tables/
 *.o
 *.a
 *.d

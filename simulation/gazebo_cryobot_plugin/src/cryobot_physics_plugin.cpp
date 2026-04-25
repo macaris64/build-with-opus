@@ -3,7 +3,7 @@
 
 #include <gz/sim/Model.hh>
 #include <gz/sim/components/ExternalWorldWrenchCmd.hh>
-#include <gz/sim/components/WorldPose.hh>
+#include <gz/sim/Util.hh>
 #include <gz/msgs/wrench.pb.h>
 #include <gz/plugin/Register.hh>
 
@@ -46,11 +46,8 @@ void CrybotPhysicsPlugin::PreUpdate(
 
     /* Compute approximate depth from world Z as proxy for tether extension.
      * Phase 42+ reads the tether joint state directly. */
-    const auto *poseComp =
-        ecm.Component<gz::sim::components::WorldPose>(linkEntity_);
-    const double depth = (poseComp != nullptr)
-        ? -poseComp->Data().Pos().Z()
-        : 0.0;
+    const gz::math::Pose3d wPose = gz::sim::worldPose(linkEntity_, ecm);
+    const double depth = -wPose.Pos().Z();
 
     double descent = 0.0;
     {
@@ -88,3 +85,4 @@ void CrybotPhysicsPlugin::OnCmdVel(const gz::msgs::Twist &msg)
 
 GZ_ADD_PLUGIN(CrybotPhysicsPlugin, gz::sim::System,
               gz::sim::ISystemConfigure, gz::sim::ISystemPreUpdate)
+GZ_ADD_PLUGIN_ALIAS(CrybotPhysicsPlugin, "cryobot_physics")
