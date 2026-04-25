@@ -302,10 +302,45 @@ size_t FaultInjector::EmitSpp(uint16_t apid, const FaultEvent &ev)
 
     if (len == 0U) { return 0U; }
 
-    if (sock_fd_ >= 0)
-    {
-        (void)send(sock_fd_, buf, len, 0);
-    }
-
+    SendAsAosFrame(buf, len);
     return len;
+}
+
+/* AOS Transfer Frame constants (CCSDS 732.0-B-4, Q-C4). */
+static constexpr size_t AOS_FRAME_LEN    = 1024U;
+static constexpr size_t AOS_HEADER_LEN   = 6U;
+static constexpr size_t AOS_FECF_LEN     = 2U;
+static constexpr size_t AOS_DATA_LEN     = AOS_FRAME_LEN - AOS_HEADER_LEN - AOS_FECF_LEN; /* 1016 */
+static constexpr size_t AOS_FECF_OFFSET  = AOS_FRAME_LEN - AOS_FECF_LEN; /* 1022 */
+/* SAKURA-II spacecraft ID (matches AosFramer test constant). */
+static constexpr uint8_t AOS_SCID = 42U;
+/* VC 0 carries fault-inject SPPs — rejected by ApidRouter (Q-F2). */
+static constexpr uint8_t AOS_VCID = 0U;
+
+void FaultInjector::SendAsAosFrame(const uint8_t *spp, size_t spp_len)
+{
+    if (sock_fd_ < 0 || spp_len == 0U) { return; }
+
+    uint8_t frame[AOS_FRAME_LEN] = {};
+
+    /* Primary header (CCSDS 732.0-B-4 §4.1). */
+    frame[0] = (uint8_t)(0x40U | (AOS_SCID >> 2U));                          /* TF v=01, SCID[7:2] */
+    frame[1] = (uint8_t)(((AOS_SCID & 0x03U) << 6U) | (AOS_VCID & 0x3FU)); /* SCID[1:0], VCID   */
+    frame[2] = (uint8_t)((vcfc_ >> 16U) & 0xFFU);                            /* VCFC[23:16]        */
+    frame[3] = (uint8_t)((vcfc_ >>  8U) & 0xFFU);                            /* VCFC[15:8]         */
+    frame[4] = (uint8_t)( vcfc_         & 0xFFU);                            /* VCFC[7:0]          */
+    frame[5] = 0x00U;                                                          /* no OCF, no replay  */
+    vcfc_ = (vcfc_ + 1U) & 0x00FFFFFFU;                                       /* 24-bit rollover    */
+
+    /* Data field: SPP at the start, remainder zero-padded. */
+    const size_t copy_len = (spp_len < AOS_DATA_LEN) ? spp_len : AOS_DATA_LEN;
+    std::memcpy(&frame[AOS_HEADER_LEN], spp, copy_len);
+
+    /* FECF: CRC-16/IBM-3740 = CRC-16/CCITT-FALSE over bytes [0..1022).
+     * spp_crc16 uses the same algorithm (poly 0x1021, init 0xFFFF). */
+    const uint16_t fecf = spp_crc16(frame, AOS_FECF_OFFSET);
+    frame[AOS_FECF_OFFSET]     = (uint8_t)((fecf >> 8U) & 0xFFU); /* big-endian (Q-C8) */
+    frame[AOS_FECF_OFFSET + 1] = (uint8_t)( fecf        & 0xFFU);
+
+    (void)send(sock_fd_, frame, AOS_FRAME_LEN, 0);
 }

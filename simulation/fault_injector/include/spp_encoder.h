@@ -3,9 +3,20 @@
 #include <cstdint>
 #include <cstddef>
 
-/* Maximum encoded SPP size for any fault-injection packet (primary header +
- * largest user-data payload: 0x543 = 6 + 20 = 26 bytes). */
-static constexpr size_t SPP_MAX_BYTES = 26U;
+/* Total SPP size for fault-injection packets: must exactly fill the 1016-byte
+ * AOS data field (1024 B frame − 6 B header − 2 B FECF) so that
+ * ccsds_wire::SpacePacket::parse passes its LengthMismatch check.
+ * Layout: 6 B primary | 10 B secondary | ≤20 B fault payload | zero padding. */
+static constexpr size_t SPP_MAX_BYTES = 1016U;
+
+/* CCSDS Packet Data Field length - 1, declared in primary header bytes 4-5.
+ * data_length = SPP_MAX_BYTES - 6 - 1 = 1009 per ccsds_wire::SpacePacket::parse
+ * contract: declared_total = data_length + 7 must equal buf.len(). */
+static constexpr uint16_t SPP_DATA_LENGTH = 1009U;
+
+/* Byte offset where fault-specific user data begins inside the SPP buffer.
+ * = 6 (primary header) + 10 (secondary header). */
+static constexpr size_t SPP_FAULT_PAYLOAD_OFFSET = 16U;
 
 /* CCSDS APID constants for the four fault types (ICD-sim-fsw.md §2). */
 static constexpr uint16_t APID_PACKET_DROP  = 0x0540U;
@@ -13,7 +24,7 @@ static constexpr uint16_t APID_CLOCK_SKEW   = 0x0541U;
 static constexpr uint16_t APID_SAFE_MODE    = 0x0542U;
 static constexpr uint16_t APID_SENSOR_NOISE = 0x0543U;
 
-/* User-data sizes for each fault type (packet-catalog §7). */
+/* User-data sizes for each fault type (packet-catalog §7), excluding secondary header. */
 static constexpr size_t PAYLOAD_PACKET_DROP  = 10U;  /* 8 B data + 2 B CRC */
 static constexpr size_t PAYLOAD_CLOCK_SKEW   = 16U;  /* 14 B data + 2 B CRC */
 static constexpr size_t PAYLOAD_SAFE_MODE    = 6U;   /* 4 B data + 2 B CRC */
@@ -30,24 +41,24 @@ uint16_t spp_crc16(const uint8_t *data, size_t len);
  *   buf        — output buffer (must be at least 6 bytes)
  *   apid       — 11-bit APID (0x000–0x7FE; 0x7FF is idle/reserved)
  *   seq_count  — 14-bit rolling sequence count for this APID
- *   data_len   — CCSDS Packet Data Field length - 1 (= user_data_bytes - 1)
+ *   data_len   — CCSDS Packet Data Field length - 1 (use SPP_DATA_LENGTH for
+ *                AOS-compatible fault packets)
  *
+ * Sets sec_hdr_flag=1 (required by ccsds_wire::PrimaryHeader::decode).
  * All multi-byte fields are big-endian per Q-C8 / CCSDS 133.0-B-2.
- * sec_hdr_flag is 0 for sideband fault-injection packets (no secondary header
- * defined in packet-catalog §7).
  */
 void spp_encode_header(uint8_t *buf, uint16_t apid,
                        uint16_t seq_count, uint16_t data_len);
 
-/* Packet-drop SPP (APID 0x540, 16 bytes total).
- * Returns the number of bytes written into out (always PAYLOAD_PACKET_DROP + 6 = 16). */
+/* Packet-drop SPP (APID 0x540, SPP_MAX_BYTES total, fault payload at offset 16).
+ * Returns SPP_MAX_BYTES on success, 0 if out_cap < SPP_MAX_BYTES. */
 size_t spp_encode_packet_drop(uint8_t *out,   size_t out_cap,
                                uint16_t seq_count,
                                uint8_t  link_id,
                                uint16_t drop_probability_x10000,
                                uint32_t duration_ms);
 
-/* Clock-skew SPP (APID 0x541, 22 bytes total). */
+/* Clock-skew SPP (APID 0x541, SPP_MAX_BYTES total). */
 size_t spp_encode_clock_skew(uint8_t *out,   size_t out_cap,
                               uint16_t seq_count,
                               uint8_t  asset_class,
@@ -56,14 +67,14 @@ size_t spp_encode_clock_skew(uint8_t *out,   size_t out_cap,
                               int32_t  rate_ppm_x1000,
                               uint32_t duration_s);
 
-/* Force-safe-mode SPP (APID 0x542, 12 bytes total). */
+/* Force-safe-mode SPP (APID 0x542, SPP_MAX_BYTES total). */
 size_t spp_encode_safe_mode(uint8_t *out,    size_t out_cap,
                              uint16_t seq_count,
                              uint8_t  asset_class,
                              uint8_t  instance_id,
                              uint16_t trigger_reason_code);
 
-/* Sensor-noise SPP (APID 0x543, 26 bytes total). */
+/* Sensor-noise SPP (APID 0x543, SPP_MAX_BYTES total). */
 size_t spp_encode_sensor_noise(uint8_t *out,  size_t out_cap,
                                 uint16_t seq_count,
                                 uint8_t  asset_class,

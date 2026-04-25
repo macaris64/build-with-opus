@@ -109,6 +109,10 @@ public:
 
 private:
     size_t EmitSpp(uint16_t apid, const FaultEvent &ev);
+    /* Wrap spp[0..spp_len) in a 1024-byte AOS frame (CCSDS 732.0-B-4,
+     * SCID=42, VCID=0, CRC-16/IBM-3740 FECF) and send it via UDP.
+     * Required so AosFramer in ground_station can decode the packet (Q-F2). */
+    void SendAsAosFrame(const uint8_t *spp, size_t spp_len);
 
     Scenario    scenario_;
     std::string last_error_;
@@ -116,4 +120,6 @@ private:
 
     /* Per-APID rolling sequence counts (14-bit, mod 16384). */
     uint16_t seq_counts_[4]{};
+    /* VC Frame Count for AOS primary header (24-bit, mod 2^24). */
+    uint32_t vcfc_{0};
 };
