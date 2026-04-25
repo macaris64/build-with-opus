@@ -1,60 +1,41 @@
 #include "world_environment_plugin.h"
 #include "world_environment_core.h"
 
-#include <functional>
+#include <gz/sim/World.hh>
+#include <gz/plugin/Register.hh>
 
-namespace gazebo
+void WorldEnvironmentPlugin::Configure(
+    const gz::sim::Entity &entity,
+    const std::shared_ptr<const sdf::Element> &,
+    gz::sim::EntityComponentManager &ecm,
+    gz::sim::EventManager &)
 {
+    entity_ = entity;
+    gz::sim::World world(entity);
 
-WorldEnvironmentPlugin::WorldEnvironmentPlugin()
-: world_(nullptr)
-{
-}
+    const std::string name = world.Name(ecm);
+    const auto gravOpt = world.Gravity(ecm);
 
-WorldEnvironmentPlugin::~WorldEnvironmentPlugin()
-{
-    /* update_connection_ RAII destructor disconnects the signal automatically. */
-}
-
-void WorldEnvironmentPlugin::Load(physics::WorldPtr world, sdf::ElementPtr /*sdf*/)
-{
-    if (!world)
-    {
-        gzerr << "[WorldEnvironmentPlugin] Load called with null world pointer\n";
-        return;
+    gzmsg << "[WorldEnvironmentPlugin] Loaded world: " << name << "\n";
+    if (gravOpt) {
+        gzmsg << "  gravity: (" << gravOpt->X() << ", "
+                                << gravOpt->Y() << ", "
+                                << gravOpt->Z() << ") m/s²\n";
     }
-
-    world_ = world;
-
-    update_connection_ = event::Events::ConnectWorldUpdateBegin(
-        std::bind(&WorldEnvironmentPlugin::OnUpdate, this));
-
-    /* Log environment properties at startup for verification (Phase A gate). */
-    const auto gravity = world_->Gravity();
-    gzmsg << "[WorldEnvironmentPlugin] Loaded world: " << world_->Name() << "\n"
-          << "  gravity      : (" << gravity.X() << ", "
-                                  << gravity.Y() << ", "
-                                  << gravity.Z() << ") m/s²\n"
-          << "  max_step_size: " << world_->Physics()->GetMaxStepSize() << " s\n";
 }
 
-void WorldEnvironmentPlugin::OnUpdate()
+void WorldEnvironmentPlugin::PostUpdate(
+    const gz::sim::UpdateInfo &,
+    const gz::sim::EntityComponentManager &)
 {
-    if (!world_)
-    {
-        return;
-    }
-
     ++tick_count_;
 
-    if (gazebo_world::should_emit_heartbeat(tick_count_))
-    {
+    if (gazebo_world::should_emit_heartbeat(tick_count_)) {
         /* Periodic heartbeat — Phase 39+ will replace this with sideband
          * SPP emission to the FSW sim_adapter app. */
-        gzmsg << "[WorldEnvironmentPlugin] sim_time="
-              << world_->SimTime().Double() << " s"
-              << "  tick=" << tick_count_ << "\n";
+        gzmsg << "[WorldEnvironmentPlugin] tick=" << tick_count_ << "\n";
     }
 }
 
-}  // namespace gazebo
+GZ_ADD_PLUGIN(WorldEnvironmentPlugin, gz::sim::System,
+              gz::sim::ISystemConfigure, gz::sim::ISystemPostUpdate)

@@ -44,11 +44,18 @@ services:
       retries: 10
       start_period: 10s
 
-  # ── Gazebo Harmonic (headless) ────────────────────────────────────────────────
-  # Runs gz sim server with mars_surrogate.sdf (Mars gravity, flat terrain,
-  # rover/UAV/cryobot models).  Plugin .so files are not compiled in this
-  # image so Gazebo emits "plugin not found" warnings and continues without
-  # rover dynamics — full plugin support requires Phase A (HOW_TO_RUN.md §10).
+  # ── Gazebo Harmonic ───────────────────────────────────────────────────────────
+  # Runs gz sim with mars_surrogate.sdf (Mars gravity, flat terrain,
+  # rover/UAV/cryobot models).  Plugin .so files are compiled into the image
+  # by the multi-stage gazebo.Dockerfile (Phase A).
+  # GZ_IP and GZ_PARTITION must match the ros2 service for gz-transport peer
+  # discovery to work across Docker bridge network containers (Phase B).
+  #
+  # GUI: the command detects $$DISPLAY at runtime.
+  #   With display (make run on a desktop): opens the full Gazebo 3D window.
+  #   Without display (CI / headless server): runs server-only (-s flag).
+  # LIBGL_ALWAYS_SOFTWARE forces Mesa llvmpipe — no GPU passthrough required.
+  # The /tmp/.X11-unix bind-mount forwards the host X11 socket into the container.
   gazebo:
     image: sakura/gazebo:local
     container_name: sakura_gazebo
@@ -57,7 +64,21 @@ services:
       dockerfile: .ci/gazebo.Dockerfile
     volumes:
       - ./simulation:/app/simulation:ro
-    command: gz sim -r -s /app/simulation/worlds/mars_surrogate.sdf
+      - /tmp/.X11-unix:/tmp/.X11-unix:rw
+    command: >
+      bash -c "
+        if [ -n \"$$DISPLAY\" ]; then
+          gz sim -r /app/simulation/worlds/mars_surrogate.sdf;
+        else
+          gz sim -r -s /app/simulation/worlds/mars_surrogate.sdf;
+        fi
+      "
+    environment:
+      - DISPLAY
+      - GZ_IP=gazebo
+      - GZ_PARTITION=sakura
+      - LIBGL_ALWAYS_SOFTWARE=1
+      - MESA_GL_VERSION_OVERRIDE=3.3
     networks:
       - sakura-net
     depends_on:
@@ -71,9 +92,11 @@ services:
       start_period: 30s
 
   # ── Space ROS 2 ───────────────────────────────────────────────────────────────
-  # Builds the rover workspace with colcon, then launches teleop_node via
-  # rover.launch.py (lifecycle node, starts in unconfigured state).
-  # sim.launch.py (Gazebo bridge) requires ros_gz_bridge — see Phase B.
+  # Builds the rover workspace with colcon, then launches via sim.launch.py
+  # which starts ros_gz_bridge (bridging /cmd_vel and odometry) and teleop_node.
+  # use_external_gz:=true skips launching a second gz sim process — the gazebo
+  # service above already owns the physics server.
+  # Set LAUNCH_MODE=rover to fall back to rover.launch.py (no bridge, no Gazebo).
   ros2:
     image: sakura/ros2:local
     container_name: sakura_ros2
@@ -88,15 +111,18 @@ services:
         cd /workspace &&
         colcon build --base-paths ros2_ws/src --symlink-install &&
         source install/setup.bash &&
-        ros2 launch rover_bringup rover.launch.py
+        ros2 launch rover_bringup ${LAUNCH_MODE:-sim}.launch.py use_external_gz:=true
       "
     environment:
       - RMW_IMPLEMENTATION=rmw_cyclonedds_cpp
+      - GZ_IP=gazebo
+      - GZ_PARTITION=sakura
+      - LAUNCH_MODE=sim
     networks:
       - sakura-net
     depends_on:
       gazebo:
-        condition: service_started
+        condition: service_healthy
     healthcheck:
       test: ["CMD-SHELL", "pgrep -f teleop_node || exit 1"]
       interval: 5s

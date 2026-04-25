@@ -1,67 +1,48 @@
 #include "uav_flight_plugin.h"
 #include "uav_flight_core.h"
 
-#include <gazebo/msgs/msgs.hh>
+#include <gz/sim/Model.hh>
+#include <gz/sim/components/ExternalWorldWrenchCmd.hh>
+#include <gz/msgs/wrench.pb.h>
+#include <gz/plugin/Register.hh>
 
-#include <functional>
+#include <string>
+#include <vector>
 
-namespace gazebo
+void UavFlightPlugin::Configure(
+    const gz::sim::Entity &entity,
+    const std::shared_ptr<const sdf::Element> &,
+    gz::sim::EntityComponentManager &ecm,
+    gz::sim::EventManager &)
 {
+    entity_ = entity;
+    gz::sim::Model model(entity);
 
-UavFlightPlugin::UavFlightPlugin()
-: model_(nullptr)
-{
-}
-
-UavFlightPlugin::~UavFlightPlugin()
-{
-    /* update_connection_ RAII destructor disconnects the WorldUpdateBegin
-     * signal automatically. */
-}
-
-void UavFlightPlugin::Load(physics::ModelPtr model, sdf::ElementPtr /*sdf*/)
-{
-    if (!model)
-    {
-        gzerr << "[UavFlightPlugin] Load called with null model pointer\n";
-        return;
+    /* Use the first link as the base link for force and torque application.
+     * Phase 42+ will replace this with per-rotor entity selection. */
+    const std::vector<gz::sim::Entity> links = model.Links(ecm);
+    if (!links.empty()) {
+        linkEntity_ = links.front();
+        ecm.CreateComponent(linkEntity_,
+            gz::sim::components::ExternalWorldWrenchCmd());
+    } else {
+        gzerr << "[UavFlightPlugin] No links found on model — forces will not be applied\n";
     }
 
-    model_ = model;
+    const std::string modelName = model.Name(ecm);
+    const std::string topic = "/model/" + modelName + "/cmd_vel";
+    node_.Subscribe(topic, &UavFlightPlugin::OnCmdVel, this);
 
-    node_ = transport::NodePtr(new transport::Node());
-    node_->Init();
-    const std::string topic = std::string("~/") + model_->GetName() + "/cmd_vel";
-    cmd_vel_sub_ = node_->Subscribe(topic, &UavFlightPlugin::OnCmdVel, this);
-
-    update_connection_ = event::Events::ConnectWorldUpdateBegin(
-        std::bind(&UavFlightPlugin::OnUpdate, this));
-
-    gzmsg << "[UavFlightPlugin] Loaded on model: " << model_->GetName()
+    gzmsg << "[UavFlightPlugin] Loaded on model: " << modelName
           << " — cmd_vel topic: " << topic << "\n";
 }
 
-void UavFlightPlugin::Reset()
+void UavFlightPlugin::PreUpdate(
+    const gz::sim::UpdateInfo &,
+    gz::sim::EntityComponentManager &ecm)
 {
-    std::lock_guard<std::mutex> lock(cmd_vel_mutex_);
-    thrust_   = 0.0;
-    yaw_rate_ = 0.0;
-}
-
-void UavFlightPlugin::OnCmdVel(ConstTwistPtr &msg)
-{
-    std::lock_guard<std::mutex> lock(cmd_vel_mutex_);
-    /* linear.z is mapped to collective thrust; angular.z to yaw rate. */
-    thrust_   = msg->linear().z();
-    yaw_rate_ = msg->angular().z();
-}
-
-void UavFlightPlugin::OnUpdate()
-{
-    if (!model_)
-    {
+    if (linkEntity_ == gz::sim::kNullEntity)
         return;
-    }
 
     double thrust   = 0.0;
     double yaw_rate = 0.0;
@@ -71,19 +52,31 @@ void UavFlightPlugin::OnUpdate()
         yaw_rate = yaw_rate_;
     }
 
-    /* Apply collective thrust as an upward body-frame force. The rotor
-     * joints are used in a full implementation; for Phase 38 we apply
-     * the net force directly to the base link so the UAV is controllable
-     * in simulation before per-rotor torque modeling lands. */
-    auto links = model_->GetLinks();
-    if (!links.empty())
-    {
-        const auto cmd = gazebo_uav::compute_force_cmd(thrust, yaw_rate);
-        auto base = links.front();
-        /* Force in world Z; torque about world Z for yaw. */
-        base->AddRelativeForce(math::Vector3(0.0, 0.0, cmd.force_z));
-        base->AddRelativeTorque(math::Vector3(0.0, 0.0, cmd.torque_z));
+    /* Apply collective thrust as world-frame +Z force; yaw torque about world
+     * +Z.  Forces are in world frame — appropriate for a hover-stable UAV at
+     * small angles.  Phase 42+ replaces with body-frame per-rotor wrench. */
+    const auto cmd = gazebo_uav::compute_force_cmd(thrust, yaw_rate);
+
+    auto *wrenchCmd = ecm.Component<gz::sim::components::ExternalWorldWrenchCmd>(linkEntity_);
+    if (wrenchCmd) {
+        gz::msgs::Wrench wrench;
+        wrench.mutable_force()->set_x(0.0);
+        wrench.mutable_force()->set_y(0.0);
+        wrench.mutable_force()->set_z(cmd.force_z);
+        wrench.mutable_torque()->set_x(0.0);
+        wrench.mutable_torque()->set_y(0.0);
+        wrench.mutable_torque()->set_z(cmd.torque_z);
+        wrenchCmd->Data() = wrench;
     }
 }
 
-}  // namespace gazebo
+void UavFlightPlugin::OnCmdVel(const gz::msgs::Twist &msg)
+{
+    std::lock_guard<std::mutex> lock(cmd_vel_mutex_);
+    /* linear.z is mapped to collective thrust; angular.z to yaw rate. */
+    thrust_   = msg.linear().z();
+    yaw_rate_ = msg.angular().z();
+}
+
+GZ_ADD_PLUGIN(UavFlightPlugin, gz::sim::System,
+              gz::sim::ISystemConfigure, gz::sim::ISystemPreUpdate)

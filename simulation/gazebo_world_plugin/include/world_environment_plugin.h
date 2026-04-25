@@ -1,42 +1,38 @@
 #pragma once
 
-#include <gazebo/gazebo.hh>
-#include <gazebo/physics/WorldPtr.hh>
-#include <gazebo/common/common.hh>
+#include <gz/sim/System.hh>
+#include <gz/sim/EntityComponentManager.hh>
+#include <gz/sim/EventManager.hh>
 
-namespace gazebo
-{
+#include <cstdint>
 
 /**
- * WorldEnvironmentPlugin — Gazebo WorldPlugin for the Mars-surrogate environment.
+ * WorldEnvironmentPlugin — Gazebo Harmonic system plugin for the Mars-surrogate world.
  *
  * Attach to the world SDF element:
  *   <plugin name="world_environment" filename="libworld_environment_plugin.so"/>
  *
  * Responsibilities:
- *   - Logs environment properties (gravity, wind, time step) at startup.
- *   - Forwards simulation-time ticks for synchronisation with the TAI authority
- *     (clock_link_model); actual clock authority is a separate container per
- *     docs/architecture/08-timing-and-clocks.md §5.2.
- *   - Emits periodic env telemetry (stub; wired to ICD-sim-fsw in Phase 39+).
+ *   - Logs gravity, world name, and physics step size at startup.
+ *   - Emits periodic heartbeat ticks (Phase 39+ wires to ICD-sim-fsw sideband SPP).
+ *   - Does NOT set time authority — that is a separate clock_link_model container
+ *     per docs/architecture/08-timing-and-clocks.md §5.2.
  */
-class WorldEnvironmentPlugin : public WorldPlugin
+class WorldEnvironmentPlugin :
+    public gz::sim::System,
+    public gz::sim::ISystemConfigure,
+    public gz::sim::ISystemPostUpdate
 {
 public:
-    WorldEnvironmentPlugin();
-    ~WorldEnvironmentPlugin() override;
+    void Configure(const gz::sim::Entity &entity,
+                   const std::shared_ptr<const sdf::Element> &sdf,
+                   gz::sim::EntityComponentManager &ecm,
+                   gz::sim::EventManager &eventMgr) override;
 
-    void Load(physics::WorldPtr world, sdf::ElementPtr sdf) override;
+    void PostUpdate(const gz::sim::UpdateInfo &info,
+                    const gz::sim::EntityComponentManager &ecm) override;
 
 private:
-    void OnUpdate();
-
-    physics::WorldPtr    world_;
-    event::ConnectionPtr update_connection_;
-
+    gz::sim::Entity entity_{gz::sim::kNullEntity};
     uint64_t tick_count_{0U};
 };
-
-GZ_REGISTER_WORLD_PLUGIN(WorldEnvironmentPlugin)
-
-}  // namespace gazebo

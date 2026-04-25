@@ -54,6 +54,7 @@ add_subdirectory(apps/orbiter_payload)
 add_subdirectory(apps/mcu_payload_gw)
 add_subdirectory(apps/mcu_rwa_gw)
 add_subdirectory(apps/mcu_eps_gw)
+add_subdirectory(apps/sim_adapter)
 
 # ── Simulation Plugins ────────────────────────────────────────────────────────
 # Gazebo plugins require Gazebo to be installed. Each subdirectory guards

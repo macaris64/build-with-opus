@@ -1,50 +1,50 @@
 #pragma once
 
-#include <gazebo/gazebo.hh>
-#include <gazebo/physics/physics.hh>
-#include <gazebo/common/common.hh>
-#include <gazebo/transport/transport.hh>
+#include <gz/sim/System.hh>
+#include <gz/sim/EntityComponentManager.hh>
+#include <gz/sim/EventManager.hh>
+#include <gz/transport/Node.hh>
+#include <gz/msgs/twist.pb.h>
 
 #include <mutex>
-
-namespace gazebo
-{
+#include <string>
 
 /**
- * CrybotPhysicsPlugin — Gazebo ModelPlugin for a tethered subsurface cryobot.
+ * CrybotPhysicsPlugin — Gazebo Harmonic system plugin for a tethered cryobot.
  *
  * Attach to a model SDF element:
  *   <plugin name="cryobot_physics" filename="libcryobot_physics_plugin.so"/>
  *
- * Models tether tension and ice-penetration force. Subscribes to
- * "~/<model_name>/cmd_vel" for downward velocity commands.
- * OnUpdate() applies net axial force each simulation step.
+ * Models tether spring restoring force and descent thrust.  Subscribes to
+ * "/model/<model_name>/cmd_vel" for downward velocity commands (linear.z).
+ * PreUpdate() applies net axial force to the base link each physics step.
+ *
+ * Phase 38: tether extension derived from world-Z pose; PD controller lands
+ * in Phase 42.
  */
-class CrybotPhysicsPlugin : public ModelPlugin
+class CrybotPhysicsPlugin :
+    public gz::sim::System,
+    public gz::sim::ISystemConfigure,
+    public gz::sim::ISystemPreUpdate
 {
 public:
-    CrybotPhysicsPlugin();
-    ~CrybotPhysicsPlugin() override;
+    void Configure(const gz::sim::Entity &entity,
+                   const std::shared_ptr<const sdf::Element> &sdf,
+                   gz::sim::EntityComponentManager &ecm,
+                   gz::sim::EventManager &eventMgr) override;
 
-    void Load(physics::ModelPtr model, sdf::ElementPtr sdf) override;
-    void Reset() override;
+    void PreUpdate(const gz::sim::UpdateInfo &info,
+                   gz::sim::EntityComponentManager &ecm) override;
 
 private:
-    void OnUpdate();
-    void OnCmdVel(ConstTwistPtr &msg);
+    void OnCmdVel(const gz::msgs::Twist &msg);
 
-    physics::ModelPtr    model_;
-    event::ConnectionPtr update_connection_;
+    gz::sim::Entity entity_{gz::sim::kNullEntity};
+    gz::sim::Entity linkEntity_{gz::sim::kNullEntity};
 
-    transport::NodePtr       node_;
-    transport::SubscriberPtr cmd_vel_sub_;
+    gz::transport::Node node_;
 
-    /* Tether tension magnitude [N]; updated each physics step based on depth. */
     double tether_tension_n_{0.0};
     double descent_rate_ms_{0.0};
     std::mutex cmd_vel_mutex_;
 };
-
-GZ_REGISTER_MODEL_PLUGIN(CrybotPhysicsPlugin)
-
-}  // namespace gazebo
