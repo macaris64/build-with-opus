@@ -11,20 +11,19 @@ namespace gazebo
 {
 
 /**
- * RoverDrivePlugin — Gazebo ModelPlugin for a wheeled rover chassis.
+ * UavFlightPlugin — Gazebo ModelPlugin for a UAV (fixed or rotary wing).
  *
  * Attach to a model SDF element:
- *   <plugin name="rover_drive" filename="librover_drive_plugin.so"/>
+ *   <plugin name="uav_flight" filename="libuav_flight_plugin.so"/>
  *
- * Subscribes to "~/<model_name>/cmd_vel" for differential-drive velocity
- * commands (linear.x = forward m/s, angular.z = yaw rad/s).
- * OnUpdate() is called every simulation step. It must not block.
+ * Subscribes to "~/<model_name>/cmd_vel" for attitude + thrust commands.
+ * OnUpdate() applies torques to rotor joints each simulation step.
  */
-class RoverDrivePlugin : public ModelPlugin
+class UavFlightPlugin : public ModelPlugin
 {
 public:
-    RoverDrivePlugin();
-    ~RoverDrivePlugin() override;
+    UavFlightPlugin();
+    ~UavFlightPlugin() override;
 
     void Load(physics::ModelPtr model, sdf::ElementPtr sdf) override;
     void Reset() override;
@@ -39,11 +38,11 @@ private:
     transport::NodePtr       node_;
     transport::SubscriberPtr cmd_vel_sub_;
 
-    double lin_vel_{0.0};
-    double ang_vel_{0.0};
+    double thrust_{0.0};
+    double yaw_rate_{0.0};
     std::mutex cmd_vel_mutex_;
 };
 
-GZ_REGISTER_MODEL_PLUGIN(RoverDrivePlugin)
+GZ_REGISTER_MODEL_PLUGIN(UavFlightPlugin)
 
 }  // namespace gazebo

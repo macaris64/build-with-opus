@@ -34,9 +34,13 @@ add_subdirectory(apps/mcu_rwa_gw)
 add_subdirectory(apps/mcu_eps_gw)
 
 # ── Simulation Plugins ────────────────────────────────────────────────────────
-# Gazebo plugins require Gazebo Harmonic to be installed. The subdirectory
-# guards against building when Gazebo is absent.
+# Gazebo plugins require Gazebo to be installed. Each subdirectory guards
+# against building when Gazebo headers are absent — all cFS unit-test targets
+# remain unaffected if Gazebo is not installed.
 add_subdirectory(simulation/gazebo_rover_plugin)
+add_subdirectory(simulation/gazebo_uav_plugin)
+add_subdirectory(simulation/gazebo_cryobot_plugin)
+add_subdirectory(simulation/gazebo_world_plugin)
 
 # ── Note on ROS 2 workspace ───────────────────────────────────────────────────
 # ros2_ws/ is built separately with colcon (not cmake --build).

@@ -1,10 +1,16 @@
 #include "rover_drive_plugin.h"
 
+#include <gazebo/msgs/msgs.hh>
 #include <gazebo/transport/transport.hh>
+
 #include <functional>
 
 namespace gazebo
 {
+
+/* Physical parameters of the rover chassis used for differential-drive kinematics. */
+static constexpr double WHEEL_RADIUS_M  = 0.1;   /* wheel radius [m] */
+static constexpr double HALF_TRACK_M    = 0.2;   /* half track width [m] */
 
 RoverDrivePlugin::RoverDrivePlugin()
 : model_(nullptr)
@@ -27,35 +33,61 @@ void RoverDrivePlugin::Load(physics::ModelPtr model, sdf::ElementPtr /*sdf*/)
 
     model_ = model;
 
-    /* Connect to the world update signal. The connection object keeps the
-     * callback alive — Reset() does not disconnect it. */
+    node_ = transport::NodePtr(new transport::Node());
+    node_->Init();
+    const std::string topic = std::string("~/") + model_->GetName() + "/cmd_vel";
+    cmd_vel_sub_ = node_->Subscribe(topic, &RoverDrivePlugin::OnCmdVel, this);
+
     update_connection_ = event::Events::ConnectWorldUpdateBegin(
         std::bind(&RoverDrivePlugin::OnUpdate, this));
 
-    gzmsg << "[RoverDrivePlugin] Loaded on model: " << model_->GetName() << "\n";
+    gzmsg << "[RoverDrivePlugin] Loaded on model: " << model_->GetName()
+          << " — cmd_vel topic: " << topic << "\n";
 }
 
 void RoverDrivePlugin::Reset()
 {
-    /* Called when the simulation is reset. Joint velocities are zeroed by
-     * the physics engine; we only need to reset plugin-internal state here. */
+    std::lock_guard<std::mutex> lock(cmd_vel_mutex_);
+    lin_vel_ = 0.0;
+    ang_vel_ = 0.0;
+}
+
+void RoverDrivePlugin::OnCmdVel(ConstTwistPtr &msg)
+{
+    std::lock_guard<std::mutex> lock(cmd_vel_mutex_);
+    lin_vel_ = msg->linear().x();
+    ang_vel_ = msg->angular().z();
 }
 
 void RoverDrivePlugin::OnUpdate()
 {
-    /* Called every simulation step. Must not block.
-     * This stub reads joint states; a full implementation would apply
-     * torques based on a subscribed cmd_vel message. */
     if (!model_)
     {
         return;
     }
 
-    /* Read wheel joint states for telemetry (example — extend as needed) */
-    auto joints = model_->GetJoints();
-    for (const auto & joint : joints)
+    double lin = 0.0;
+    double ang = 0.0;
     {
-        (void)joint->GetVelocity(0U); /* axis 0 angular velocity */
+        std::lock_guard<std::mutex> lock(cmd_vel_mutex_);
+        lin = lin_vel_;
+        ang = ang_vel_;
+    }
+
+    /* Differential drive kinematics: convert (v, ω) to per-wheel angular velocity. */
+    const double left_rad_s  = (lin - ang * HALF_TRACK_M) / WHEEL_RADIUS_M;
+    const double right_rad_s = (lin + ang * HALF_TRACK_M) / WHEEL_RADIUS_M;
+
+    auto left_joint  = model_->GetJoint("left_wheel_joint");
+    auto right_joint = model_->GetJoint("right_wheel_joint");
+
+    if (left_joint)
+    {
+        left_joint->SetVelocity(0U, left_rad_s);
+    }
+    if (right_joint)
+    {
+        right_joint->SetVelocity(0U, right_rad_s);
     }
 }
 
