@@ -101,6 +101,32 @@ services:
       retries: 5
       start_period: 30s
 
+  fault_injector:
+    container_name: sakura_fault_injector
+    build:
+      context: .
+      dockerfile: .ci/cfs.Dockerfile
+    volumes:
+      - ./simulation:/app/simulation:ro
+      - ./build:/app/build:ro
+    command: >
+      bash -c "
+        /app/build/simulation/fault_injector/fault_injector_run \
+          ground_station \
+          10000 \
+          /app/simulation/scenarios/SCN-OFF-01-clockskew.yaml \
+          30 &&
+        echo 'fault_injector: SCN-OFF-01-clockskew injected'
+      "
+    networks:
+      - sakura-net
+    depends_on:
+      cfs:
+        condition: service_healthy
+      ground_station:
+        condition: service_healthy
+    restart: "no"
+
 networks:
   sakura-net:
     driver: bridge
