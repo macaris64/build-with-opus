@@ -51,4 +51,15 @@
 /* ── Sim injection block anchor (sideband only; never flight-path) ──────────── */
 #define SIM_INJECT_HK_MID        0x0D00U   /* 0x0800 | 0x500 */
 
+/* ── Fault-injection SPP APIDs (sideband only; ICD-sim-fsw.md §2) ───────────
+ * These are raw APID values (not cFE MIDs) used by simulation/fault_injector.
+ * They are never placed on the cFE Software Bus (CFS_FLIGHT_BUILD guard
+ * required in sim_adapter; see ICD-sim-fsw.md §5.2). */
+#define SIM_FAULT_APID_BASE      0x0540U   /* first fault-injection APID */
+#define SIM_FAULT_APID_PKT_DROP  0x0540U   /* PKT-SIM-0540-0001 packet drop */
+#define SIM_FAULT_APID_CLK_SKEW  0x0541U   /* PKT-SIM-0541-0001 clock skew */
+#define SIM_FAULT_APID_SAFE_MODE 0x0542U   /* PKT-SIM-0542-0001 force safe-mode */
+#define SIM_FAULT_APID_SNS_NOISE 0x0543U   /* PKT-SIM-0543-0001 sensor-noise corruption */
+#define SIM_FAULT_APID_LAST      0x0543U   /* last reserved fault-injection APID */
+
 #endif /* MIDS_H */
