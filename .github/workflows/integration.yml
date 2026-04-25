@@ -1,7 +1,7 @@
 # SAKURA-II SITL Integration Smoke Test
 #
 # Runs the four-stack docker compose SITL scenario.
-# Triggers: push to main, workflow_dispatch only.
+# Triggers: push to master, workflow_dispatch only.
 # NOT triggered on pull_request (too slow / requires Gazebo + ROS 2 Docker images).
 #
 # Gate: integration smoke test passes when:
@@ -16,7 +16,7 @@ name: Integration Smoke
 
 on:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 concurrency:

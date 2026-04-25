@@ -1,13 +1,13 @@
 # SAKURA-II PR-gate CI
 # Spec: docs/dev/ci-workflow.md
-# Triggers: pull_request (all branches), push to main, workflow_dispatch
+# Triggers: pull_request (all branches), push to master, workflow_dispatch
 
 name: CI
 
 on:
   pull_request:
   push:
-    branches: [main]
+    branches: [master]
   workflow_dispatch:
 
 concurrency:
