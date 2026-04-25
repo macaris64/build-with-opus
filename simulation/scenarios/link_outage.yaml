@@ -1,0 +1,15 @@
+# Scenario: SCN-LNK-01 — Link outage on ORBITER-RELAY link.
+#
+# Emits PKT-SIM-0540-0001 (100 % packet drop on VC1) at t=2.0 s for 500 ms.
+# The orbiter_comm app increments UplinkIdleCount and declares LOS after
+# ORBITER_COMM_LOS_TIMEOUT_CYCLES scheduler ticks.
+#
+# References: ICD-sim-fsw.md §3.1, apps/orbiter_comm/fsw/src/orbiter_comm.h.
+scenario: SCN-LNK-01
+description: ORBITER-RELAY link outage — 100 pct drop for 500 ms
+faults:
+  - type: packet_drop
+    at_tai_offset_s: 2.0
+    link_id: 1
+    drop_probability_x10000: 10000
+    drop_duration_ms: 500

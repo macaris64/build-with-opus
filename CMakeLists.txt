@@ -41,6 +41,9 @@ add_subdirectory(simulation/gazebo_rover_plugin)
 add_subdirectory(simulation/gazebo_uav_plugin)
 add_subdirectory(simulation/gazebo_cryobot_plugin)
 add_subdirectory(simulation/gazebo_world_plugin)
+# fault_injector core library builds always (no Gazebo dep); only the
+# scenario-runner integration with Gazebo requires Gazebo headers.
+add_subdirectory(simulation/fault_injector)
 
 # ── Note on ROS 2 workspace ───────────────────────────────────────────────────
 # ros2_ws/ is built separately with colcon (not cmake --build).

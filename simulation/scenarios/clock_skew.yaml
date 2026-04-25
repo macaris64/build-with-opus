@@ -1,0 +1,17 @@
+# Scenario: SCN-CLK-01 — Clock-skew injection on orbiter instance 1.
+#
+# Emits PKT-SIM-0541-0001 at t=0.1 s to the sim_adapter app.
+# The orbiter time task adds +500 ms to its local TAI read-path for 2 s,
+# causing ground observers to see time_suspect=1 in HK packets.
+#
+# References: ICD-sim-fsw.md §3.2, docs/architecture/08-timing-and-clocks.md §4.
+scenario: SCN-CLK-01
+description: Orbiter clock skew — 500 ms offset for 2 s
+faults:
+  - type: clock_skew
+    at_tai_offset_s: 0.1
+    asset_class: 0
+    instance_id: 1
+    offset_ms: 500
+    rate_ppm_x1000: 0
+    clock_duration_s: 2
