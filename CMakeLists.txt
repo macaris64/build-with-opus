@@ -26,6 +26,7 @@ option(SAKURA_COVERAGE "Enable gcov branch-coverage instrumentation on unit-test
 add_subdirectory(apps/sample_app)
 add_subdirectory(apps/orbiter_cdh)
 add_subdirectory(apps/orbiter_adcs)
+add_subdirectory(apps/orbiter_comm)
 
 # ── Simulation Plugins ────────────────────────────────────────────────────────
 # Gazebo plugins require Gazebo Harmonic to be installed. The subdirectory
