@@ -1,14 +1,12 @@
-FROM osrf/space-ros:humble-20240408
+FROM osrf/space-ros:latest
 
-# Install colcon extensions and pytest for CI
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    python3-colcon-common-extensions \
-    python3-pytest \
-    && rm -rf /var/lib/apt/lists/*
-
-# Workspace environment variables expected by colcon
-ENV AMENT_PREFIX_PATH=/opt/ros/humble
-ENV ROS_DISTRO=humble
-ENV COLCON_HOME=/root/.colcon
+# colcon and pytest are pre-installed; AMENT_PREFIX_PATH, ROS_DISTRO, and
+# SPACEROS_DIR are set by the base image — no extra configuration needed.
+#
+# Create /workspace with spaceros-user ownership so colcon can write build/
+# log/ and install/ outputs there without a permission error.
+USER root
+RUN mkdir -p /workspace && chown spaceros-user:spaceros-user /workspace
+USER spaceros-user
 
 WORKDIR /workspace

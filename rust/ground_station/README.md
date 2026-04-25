@@ -51,6 +51,25 @@ VcDemultiplexer    VC0 → SppDecoder; VC1 → event sink; VC2 → CFDP
 | `/api/tc` | POST | Submit a TC command (validates validity window) |
 | `/ws` | WS | JSON snapshot of all 7 surfaces, then closes |
 
+## Examples
+
+Five runnable demos in [`examples/`](examples/) exercise the full production stack
+with no mocking — real library code, real wire formats:
+
+| Example | What it shows |
+|---------|---------------|
+| [`pipeline_demo`](examples/pipeline_demo.rs) | End-to-end AOS → VcDemux → SppDecoder → ApidRouter with live tokio RF link |
+| [`uplink_session`](examples/uplink_session.rs) | TC uplink: TcBuilder → FOP-1 (Cop1Engine) → SDLP framing (TcFramer) |
+| [`cfdp_session`](examples/cfdp_session.rs) | CFDP Class 1 downlink: happy path, CRC mismatch, out-of-order, timeout |
+| [`mfile_reassembly`](examples/mfile_reassembly.rs) | M-File chunked reassembly: in-order, reordered, duplicates, timeout |
+| [`cfs_bridge`](examples/cfs_bridge.rs) | cFS ↔ Rust MID decode, ApidRouter routing, round-trip guarantee (Q-C8) |
+
+```bash
+cargo run -p ground_station --example pipeline_demo
+```
+
+See [`examples/README.md`](examples/README.md) for full descriptions and usage.
+
 ## Architecture Reference
 
 - Design: [`docs/architecture/06-ground-segment-rust.md`](../../docs/architecture/06-ground-segment-rust.md)
