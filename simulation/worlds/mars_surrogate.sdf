@@ -1,0 +1,208 @@
+<?xml version="1.0" ?>
+<!--
+  mars_surrogate.sdf — SAKURA-II Mars-surrogate simulation world.
+
+  Environment parameters (Mars surface, Jezero Crater reference):
+    gravity    : 0 0 -3.72 m/s²  (Mars mean surface gravity)
+    solar flux : ~586 W/m²        (Mars mean solar irradiance; ~43 % of Earth)
+    atmosphere : modelled as near-vacuum (no drag in Phase 38; ISA stub)
+
+  Plugins loaded:
+    world_environment_plugin  — env telemetry + sim-time tick forwarding
+    rover_drive_plugin        — wheeled rover differential drive
+    uav_flight_plugin         — UAV attitude + thrust
+    cryobot_physics_plugin    — tethered subsurface cryobot
+
+  Phase 38: terrain is a flat infinite plane; Mars heightmap deferred to Phase 42.
+-->
+<sdf version="1.7">
+  <world name="mars_surrogate">
+
+    <!-- ── Physics ──────────────────────────────────────────────────────────── -->
+    <gravity>0 0 -3.72</gravity>
+    <physics name="default_physics" default="true" type="ode">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+
+    <!-- ── Atmosphere (minimal stub — no drag coefficients yet) ─────────────── -->
+    <atmosphere type="adiabatic"/>
+
+    <!-- ── World-environment plugin ─────────────────────────────────────────── -->
+    <plugin name="world_environment" filename="libworld_environment_plugin.so"/>
+
+    <!-- ── Sun (Mars solar irradiance at ~1.52 AU) ─────────────────────────── -->
+    <light name="sun" type="directional">
+      <cast_shadows>true</cast_shadows>
+      <!-- Direction matches ~45° elevation, south-facing on Jezero Crater lat. -->
+      <direction>0.5 0.1 -0.9</direction>
+      <!-- Diffuse scaled to ~43 % of Earth 1.0 reference. -->
+      <diffuse>0.43 0.43 0.43 1</diffuse>
+      <specular>0.1 0.1 0.1 1</specular>
+    </light>
+
+    <!-- ── Ground plane ─────────────────────────────────────────────────────── -->
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>500 500</size>
+            </plane>
+          </geometry>
+          <surface>
+            <friction>
+              <ode>
+                <!-- Basalt regolith friction estimate. -->
+                <mu>0.7</mu>
+                <mu2>0.7</mu2>
+              </ode>
+            </friction>
+          </surface>
+        </collision>
+        <visual name="visual">
+          <geometry>
+            <plane>
+              <normal>0 0 1</normal>
+              <size>500 500</size>
+            </plane>
+          </geometry>
+          <material>
+            <ambient>0.55 0.27 0.07 1</ambient>
+            <diffuse>0.55 0.27 0.07 1</diffuse>
+            <specular>0.01 0.01 0.01 1</specular>
+          </material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- ── Land rover (SAKURA-II rover_land class) ──────────────────────────── -->
+    <model name="rover_land_0">
+      <pose>0 0 0.15 0 0 0</pose>
+
+      <link name="chassis">
+        <inertial>
+          <mass>20.0</mass>
+          <inertia>
+            <ixx>0.5</ixx> <ixy>0</ixy> <ixz>0</ixz>
+            <iyy>1.0</iyy> <iyz>0</iyz>
+            <izz>1.0</izz>
+          </inertia>
+        </inertial>
+        <collision name="chassis_col">
+          <geometry><box><size>0.6 0.4 0.2</size></box></geometry>
+        </collision>
+        <visual name="chassis_vis">
+          <geometry><box><size>0.6 0.4 0.2</size></box></geometry>
+          <material><ambient>0.2 0.4 0.8 1</ambient><diffuse>0.2 0.4 0.8 1</diffuse></material>
+        </visual>
+      </link>
+
+      <!-- Left wheel -->
+      <link name="left_wheel">
+        <pose>0.0 0.25 0 1.5707 0 0</pose>
+        <inertial>
+          <mass>1.0</mass>
+          <inertia><ixx>0.01</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.01</iyy><iyz>0</iyz><izz>0.01</izz></inertia>
+        </inertial>
+        <collision name="col">
+          <geometry><cylinder><radius>0.1</radius><length>0.05</length></cylinder></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><cylinder><radius>0.1</radius><length>0.05</length></cylinder></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.1 0.1 0.1 1</diffuse></material>
+        </visual>
+      </link>
+
+      <!-- Right wheel -->
+      <link name="right_wheel">
+        <pose>0.0 -0.25 0 1.5707 0 0</pose>
+        <inertial>
+          <mass>1.0</mass>
+          <inertia><ixx>0.01</ixx><ixy>0</ixy><ixz>0</ixz><iyy>0.01</iyy><iyz>0</iyz><izz>0.01</izz></inertia>
+        </inertial>
+        <collision name="col">
+          <geometry><cylinder><radius>0.1</radius><length>0.05</length></cylinder></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><cylinder><radius>0.1</radius><length>0.05</length></cylinder></geometry>
+          <material><ambient>0.1 0.1 0.1 1</ambient><diffuse>0.1 0.1 0.1 1</diffuse></material>
+        </visual>
+      </link>
+
+      <joint name="left_wheel_joint" type="revolute">
+        <parent>chassis</parent>
+        <child>left_wheel</child>
+        <axis>
+          <xyz>0 0 1</xyz>
+          <dynamics><damping>0.1</damping></dynamics>
+        </axis>
+      </joint>
+
+      <joint name="right_wheel_joint" type="revolute">
+        <parent>chassis</parent>
+        <child>right_wheel</child>
+        <axis>
+          <xyz>0 0 1</xyz>
+          <dynamics><damping>0.1</damping></dynamics>
+        </axis>
+      </joint>
+
+      <plugin name="rover_drive" filename="librover_drive_plugin.so"/>
+    </model>
+
+    <!-- ── UAV (SAKURA-II rover_uav class) ──────────────────────────────────── -->
+    <model name="rover_uav_0">
+      <pose>5 0 1.0 0 0 0</pose>
+
+      <link name="body">
+        <inertial>
+          <mass>2.0</mass>
+          <inertia>
+            <ixx>0.02</ixx><ixy>0</ixy><ixz>0</ixz>
+            <iyy>0.02</iyy><iyz>0</iyz>
+            <izz>0.04</izz>
+          </inertia>
+        </inertial>
+        <collision name="col">
+          <geometry><box><size>0.3 0.3 0.1</size></box></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><box><size>0.3 0.3 0.1</size></box></geometry>
+          <material><ambient>0.8 0.6 0.0 1</ambient><diffuse>0.8 0.6 0.0 1</diffuse></material>
+        </visual>
+      </link>
+
+      <plugin name="uav_flight" filename="libuav_flight_plugin.so"/>
+    </model>
+
+    <!-- ── Cryobot (SAKURA-II rover_cryobot class) ──────────────────────────── -->
+    <model name="rover_cryobot_0">
+      <pose>-5 0 0.5 0 0 0</pose>
+
+      <link name="body">
+        <inertial>
+          <mass>5.0</mass>
+          <inertia>
+            <ixx>0.05</ixx><ixy>0</ixy><ixz>0</ixz>
+            <iyy>0.05</iyy><iyz>0</iyz>
+            <izz>0.02</izz>
+          </inertia>
+        </inertial>
+        <collision name="col">
+          <geometry><cylinder><radius>0.1</radius><length>1.0</length></cylinder></geometry>
+        </collision>
+        <visual name="vis">
+          <geometry><cylinder><radius>0.1</radius><length>1.0</length></cylinder></geometry>
+          <material><ambient>0.3 0.7 0.3 1</ambient><diffuse>0.3 0.7 0.3 1</diffuse></material>
+        </visual>
+      </link>
+
+      <plugin name="cryobot_physics" filename="libcryobot_physics_plugin.so"/>
+    </model>
+
+  </world>
+</sdf>
