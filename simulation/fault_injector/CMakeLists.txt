@@ -30,3 +30,14 @@ target_compile_definitions(fault_injector_test PRIVATE
 if(BUILD_TESTING)
     add_test(NAME fault_injector_unit_tests COMMAND fault_injector_test)
 endif()
+
+# ── SITL CLI entrypoint ───────────────────────────────────────────────────────
+# fault_injector_run: standalone scenario runner for the docker compose
+# fault_injector service (Phase 40). Takes host/port/scenario/duration as
+# runtime args — no compile-time SCENARIOS_DIR needed.
+add_executable(fault_injector_run
+    src/main.cpp
+)
+target_include_directories(fault_injector_run PRIVATE include)
+target_compile_options(fault_injector_run PRIVATE -Wall -Wextra -Werror)
+target_link_libraries(fault_injector_run PRIVATE fault_injector_lib)

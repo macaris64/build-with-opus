@@ -7,7 +7,9 @@ use ground_station::ingest::{
     demux::VcDemultiplexer,
     framer::{AosFramer, AOS_FRAME_LEN},
 };
+use ground_station::ui::{self, UiState};
 use log::info;
+use std::sync::Arc;
 use tokio::io::AsyncWriteExt;
 use tokio::sync::{mpsc, watch};
 
@@ -24,7 +26,9 @@ use tokio::sync::{mpsc, watch};
 // Spawned tasks cannot propagate `?`; `.expect()` in tasks is the idiomatic
 // abort-on-invariant-violation pattern when the invariant is statically guaranteed
 // (e.g., `with_default_channels` always provides VCs 0–3).
-#[allow(clippy::expect_used, clippy::indexing_slicing)]
+// `too_many_lines`: main() orchestrates the full pipeline + UI server in one
+// place intentionally; splitting across helpers obscures the startup order.
+#[allow(clippy::expect_used, clippy::indexing_slicing, clippy::too_many_lines)]
 #[tokio::main]
 async fn main() -> Result<()> {
     env_logger::init();
@@ -34,6 +38,9 @@ async fn main() -> Result<()> {
         .unwrap_or_else(|| "127.0.0.1:10000".to_owned());
 
     info!("Ground station starting — listening on UDP {listen_addr}");
+
+    // ── Shared UI state ───────────────────────────────────────────────────────
+    let ui_state = Arc::new(UiState::new(37));
 
     // ── Pipeline channels ─────────────────────────────────────────────────────
     let (frame_tx, frame_rx) = mpsc::channel::<AosFrame>(AOS_TO_DEMUX_CAP);
@@ -116,6 +123,7 @@ async fn main() -> Result<()> {
     drop(tagged_tx);
 
     // ── Stage 4: ApidRouter + sink dispatch ──────────────────────────────────
+    let ui_state_router = ui_state.clone();
     tokio::spawn(async move {
         use ccsds_wire::SpacePacket;
         let mut router = ApidRouter::new();
@@ -142,13 +150,32 @@ async fn main() -> Result<()> {
                 }
                 Route::IdleFill => {}
                 Route::Rejected { reason } => {
+                    let apid = pkt.primary.apid().get();
                     log::warn!(
-                        "INGEST-FORBIDDEN-APID apid=0x{:03X} reason={reason:?}",
-                        pkt.primary.apid().get()
+                        "INGEST-FORBIDDEN-APID apid=0x{apid:03X} reason={reason:?}"
                     );
+                    // APID 0x541 (clock-skew) sets the time_suspect badge.
+                    // try_write is non-blocking; skipped if lock is briefly held.
+                    // Phase 40 DoD; Q-F2; §638.
+                    if apid == 0x0541 {
+                        if let Ok(mut auth) = ui_state_router.time_auth.try_write() {
+                            auth.time_suspect_seen = true;
+                        }
+                    }
                 }
             }
         }
+    });
+
+    // ── UI server (Phase 40+) — serves GET /api/time with time_suspect badge ─
+    let ui_bind = std::env::var("UI_BIND").unwrap_or_else(|_| "0.0.0.0:8080".to_owned());
+    tokio::spawn(async move {
+        let app = ui::router(ui_state);
+        let listener = tokio::net::TcpListener::bind(&ui_bind)
+            .await
+            .expect("UI TCP bind failed");
+        info!("UI server listening on {ui_bind}");
+        axum::serve(listener, app).await.expect("UI server error");
     });
 
     // ── Graceful shutdown ─────────────────────────────────────────────────────

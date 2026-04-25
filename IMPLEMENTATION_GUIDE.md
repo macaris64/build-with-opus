@@ -193,7 +193,7 @@ A milestone phase is `[ TEST ]`-badged (§4.2) and produces a **hard deliverable
 | `[x]` 37 | 🟢 FEAT | `rover_land` + `rover_uav` + `rover_cryobot` | `feat/phase-37-rover-classes` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[x]` 38 | 🟢 FEAT | Gazebo UAV / cryobot / world plugins | `feat/phase-38-gazebo-plugins` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[x]` 39 | 🟢 FEAT | `simulation/fault_injector` (0x540–0x543 sideband) | `feat/phase-39-fault-injector` | `claude-sonnet-4-6` | H | 100 % ✅ |
-| `[ ]` 40 | 🧪 TEST | **MILESTONE 4/5 — SITL Integrated Binary** | `feat/phase-40-sitl-integration` | `claude-sonnet-4-6` | H | 100 % ✅ |
+| `[x]` 40 | 🧪 TEST | **MILESTONE 4/5 — SITL Integrated Binary** | `feat/phase-40-sitl-integration` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[ ]` 41 | 🟢 FEAT | `apps/freertos_relay` (smallsat primary FSW) | `feat/phase-41-freertos-relay` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[ ]` 42 | 🟢 FEAT | FreeRTOS MCU firmware (`mcu_payload`/`mcu_rwa`/`mcu_eps`) | `feat/phase-42-freertos-mcu-fw` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[ ]` 43 | 🟢 FEAT | Time-authority ladder + `time_suspect` propagation | `feat/phase-43-time-ladder` | `claude-sonnet-4-6` | H | 100 % ✅ |

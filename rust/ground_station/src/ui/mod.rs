@@ -160,6 +160,10 @@ pub struct TimeAuthority {
     pub drift_budget_us_per_day: f64,
     /// Milliseconds elapsed since the last time-synchronisation packet.
     pub sync_packet_age_ms: u64,
+    /// Set to `true` when APID 0x541 (clock-skew) has been received and rejected
+    /// on the RF path (Q-F2, SYS-REQ-0041). Rendered as a "suspect" badge in the
+    /// operator UI per `docs/architecture/06-ground-segment-rust.md` §638.
+    pub time_suspect_seen: bool,
 }
 
 impl Default for TimeAuthority {
@@ -168,6 +172,7 @@ impl Default for TimeAuthority {
             tai_offset_s: 37,
             drift_budget_us_per_day: 83.3,
             sync_packet_age_ms: 0,
+            time_suspect_seen: false,
         }
     }
 }
@@ -426,6 +431,29 @@ mod tests {
     async fn ui_get_time_auth_default_leap_seconds() {
         let Json(result) = get_time_auth(State(make_state())).await;
         assert_eq!(result.tai_offset_s, 37);
+    }
+
+    // GIVEN a freshly constructed TimeAuthority
+    // WHEN  time_suspect_seen is read
+    // THEN  it defaults to false (no clock-skew injection observed yet)
+    // Phase 40 DoD: APID 0x541 → time_suspect_seen badge per §638.
+    #[tokio::test]
+    async fn ui_time_authority_default_time_suspect_seen_false() {
+        let Json(result) = get_time_auth(State(make_state())).await;
+        assert!(!result.time_suspect_seen,
+            "time_suspect_seen must default to false before any 0x541 injection");
+    }
+
+    // GIVEN a UiState whose time_auth.time_suspect_seen has been set true
+    // WHEN  GET /api/time handler is called
+    // THEN  time_suspect_seen is true in the response
+    #[tokio::test]
+    async fn ui_time_authority_time_suspect_seen_can_be_set_true() {
+        let state = make_state();
+        state.time_auth.write().await.time_suspect_seen = true;
+        let Json(result) = get_time_auth(State(state)).await;
+        assert!(result.time_suspect_seen,
+            "time_suspect_seen must be true after badge is set");
     }
 
     // ── TC submission (SYS-REQ-0061) ─────────────────────────────────────────
