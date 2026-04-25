@@ -20,6 +20,28 @@ include(_defs/targets.cmake)
 # Default OFF for normal dev builds; scripts/coverage-gate.sh passes ON explicitly.
 option(SAKURA_COVERAGE "Enable gcov branch-coverage instrumentation on unit-test executables" OFF)
 
+# ── cFS Runtime option ─────────────────────────────────────────────────────────
+# When ON, each cFS app is also compiled as a SHARED library loadable by cFE
+# (core-cpu1). Requires cFE/OSAL/PSP git submodules initialized under cfs/.
+# Run: git submodule update --init --recursive   (see cfs/README.md).
+# CMocka unit-test path remains fully functional regardless of this option.
+option(SAKURA_CFS_RUNTIME "Build each cFS app as a cFE-loadable shared library" OFF)
+
+if(SAKURA_CFS_RUNTIME)
+    # Verify submodules are present before attempting to include cFE CMake.
+    if(NOT EXISTS "${CMAKE_SOURCE_DIR}/cfs/cFE/CMakeLists.txt")
+        message(FATAL_ERROR
+            "SAKURA_CFS_RUNTIME=ON but cfs/cFE submodule is not initialized.\n"
+            "Run: git submodule update --init --recursive\n"
+            "See cfs/README.md for details.")
+    endif()
+    # cFE's top-level cmake sets up add_cfe_app() and related helpers.
+    add_subdirectory(cfs/cFE)
+    message(STATUS "SAKURA_CFS_RUNTIME: ON — apps will be linked as cFE shared libraries")
+else()
+    message(STATUS "SAKURA_CFS_RUNTIME: OFF — CMocka unit-test path only (default)")
+endif()
+
 # ── cFS Applications ──────────────────────────────────────────────────────────
 # Each app lives under apps/<name>/ and owns its own CMakeLists.txt.
 # In a full cFS integration, the cFE cmake framework provides add_cfe_app().

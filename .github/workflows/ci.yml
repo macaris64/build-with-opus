@@ -200,6 +200,73 @@ jobs:
         run: bash scripts/grep-lints.sh
 
   # ──────────────────────────────────────────────────────────────────────────
+  # 2.3b  cfs-runtime — Phase C: cFE shared-library build + startup-script check
+  #
+  # Runs only when the cFE submodule is initialized (cfs/cFE/CMakeLists.txt
+  # present). On the main branch the submodule is expected; on feature branches
+  # it is optional — the job auto-skips when the submodule is absent so that
+  # Phases 38/39/B/D branches are unaffected.
+  # ──────────────────────────────────────────────────────────────────────────
+  cfs-runtime:
+    name: cfs-runtime
+    runs-on: ubuntu-22.04
+    needs: [changes]
+    if: |
+      always() &&
+      (github.event_name != 'pull_request' ||
+       needs.changes.outputs.cfs == 'true')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Check if cFE submodule is initialized
+        id: cfe-present
+        run: |
+          if [ -f "cfs/cFE/CMakeLists.txt" ]; then
+            echo "present=true" >> $GITHUB_OUTPUT
+          else
+            echo "present=false" >> $GITHUB_OUTPUT
+            echo "cfs/cFE submodule not initialized — skipping cfs-runtime build"
+          fi
+
+      - name: Install build deps
+        if: steps.cfe-present.outputs.present == 'true'
+        run: |
+          sudo apt-get update -q
+          sudo apt-get install -y --no-install-recommends \
+            cmake ninja-build gcc g++ libcmocka-dev python3
+
+      - name: Configure (SAKURA_CFS_RUNTIME=ON)
+        if: steps.cfe-present.outputs.present == 'true'
+        run: cmake -B build_cfs -DCMAKE_BUILD_TYPE=Debug -DSAKURA_CFS_RUNTIME=ON
+
+      - name: Build shared libs
+        if: steps.cfe-present.outputs.present == 'true'
+        run: cmake --build build_cfs
+
+      - name: Verify startup script lists all 9 apps
+        if: steps.cfe-present.outputs.present == 'true'
+        run: |
+          count=$(grep -c '^CFE_APP' cpu1/startup_scripts/cfe_es_startup.scr)
+          echo "Startup script entries: $count"
+          [ "$count" -eq 9 ] || (echo "ERROR: expected 9 CFE_APP entries" && exit 1)
+
+      - name: Smoke-check shared libs exist
+        if: steps.cfe-present.outputs.present == 'true'
+        run: |
+          for app in sample_app orbiter_cdh orbiter_adcs orbiter_comm \
+                     orbiter_power orbiter_payload \
+                     mcu_eps_gw mcu_rwa_gw mcu_payload_gw; do
+            lib="$(find build_cfs -name lib${app}.so 2>/dev/null | head -1)"
+            if [ -z "$lib" ]; then
+              echo "ERROR: lib${app}.so not found in build_cfs"
+              exit 1
+            fi
+            echo "OK: $lib"
+          done
+
+  # ──────────────────────────────────────────────────────────────────────────
   # 2.4  cppcheck — SYS-REQ-0072
   # ──────────────────────────────────────────────────────────────────────────
   cppcheck:
