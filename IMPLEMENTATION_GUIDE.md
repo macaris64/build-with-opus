@@ -184,7 +184,7 @@ A milestone phase is `[ TEST ]`-badged (§4.2) and produces a **hard deliverable
 | `[x]` 28 | 🟢 FEAT | TC uplink pipeline (TcBuilder + Cop1 + TcFramer) | `feat/phase-28-tc-uplink` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[x]` 29 | 🟢 FEAT | Operator-UI backend surfaces (WS + REST) | `feat/phase-29-ui-backend` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[x]` 30 | 🧪 TEST | **MILESTONE 3/5 — `ground_station v0.1` (Phase C Step 2 gate)** | `feat/phase-30-ground-station-milestone` | `claude-sonnet-4-6` | H | 97.6 % / 95.1 % ✅ |
-| `[ ]` 31 | 🟢 FEAT | `apps/orbiter_cdh` | `feat/phase-31-orbiter-cdh` | `claude-sonnet-4-6` | M | 100 % ✅ |
+| `[x]` 31 | 🟢 FEAT | `apps/orbiter_cdh` | `feat/phase-31-orbiter-cdh` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[ ]` 32 | 🟢 FEAT | `apps/orbiter_adcs` | `feat/phase-32-orbiter-adcs` | `claude-sonnet-4-6` | M | 100 % ✅ |
 | `[ ]` 33 | 🟢 FEAT | `apps/orbiter_comm` | `feat/phase-33-orbiter-comm` | `claude-sonnet-4-6` | H | 100 % ✅ |
 | `[ ]` 34 | 🟢 FEAT | `apps/orbiter_power` + `apps/orbiter_payload` | `feat/phase-34-orbiter-power-payload` | `claude-sonnet-4-6` | M | 100 % ✅ |
