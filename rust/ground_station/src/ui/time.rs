@@ -171,7 +171,8 @@ mod tests {
         // Unix timestamp of 2024-01-01T00:00:00 UTC = 1_704_067_200
         // coarse = 1_704_067_200 - TAI_EPOCH_UNIX_S + 37
         //        = 1_704_067_200 + 378_691_200 + 37 = 2_082_758_437
-        let coarse: u32 = 1_704_067_200u64.wrapping_add(378_691_200).wrapping_add(37) as u32;
+        // 1_704_067_200 + 378_691_200 + 37 = 2_082_758_437 (fits in u32)
+        let coarse: u32 = 2_082_758_437_u32;
         let tai = Cuc { coarse, fine: 0 };
         let conv = TaiUtcConverter::new(37);
         let utc = conv.tai_to_utc(&tai);
@@ -202,7 +203,8 @@ mod tests {
     // THEN  the returned string starts with "2024-01-01T00:00:00"
     #[test]
     fn ui_tai_to_iso8601_format() {
-        let coarse: u32 = 1_704_067_200u64.wrapping_add(378_691_200).wrapping_add(37) as u32;
+        // 1_704_067_200 + 378_691_200 + 37 = 2_082_758_437 (fits in u32)
+        let coarse: u32 = 2_082_758_437_u32;
         let tai = Cuc { coarse, fine: 0 };
         let conv = TaiUtcConverter::new(37);
         let s = conv.tai_to_iso8601(&tai);
