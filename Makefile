@@ -11,7 +11,13 @@
 #   On a headless server (no DISPLAY), Gazebo runs server-only (no window).
 #   Requires x11-xserver-utils (xhost) on the host: apt install x11-xserver-utils
 
-.PHONY: run stop logs clean
+.PHONY: run stop logs clean fe inject
+
+fe:
+	cd frontend && npm run dev
+
+inject:
+	cargo run --bin demo_injector
 
 run:
 	@if [ -n "$$DISPLAY" ]; then \

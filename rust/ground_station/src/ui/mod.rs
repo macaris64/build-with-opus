@@ -25,15 +25,19 @@ pub mod time;
 use std::sync::Arc;
 
 use axum::{
+    body::Body,
     extract::{
         ws::{Message, WebSocket, WebSocketUpgrade},
-        State,
+        Request, State,
     },
     http::StatusCode,
     response::IntoResponse,
     routing::{get, post},
     Json, Router,
 };
+use tower::util::ServiceExt as _;
+use tower_http::cors::CorsLayer;
+use tower_http::services::ServeDir;
 use ccsds_wire::Cuc;
 use serde::{Deserialize, Serialize};
 use tokio::sync::{mpsc, RwLock};
@@ -181,11 +185,17 @@ impl Default for TimeAuthority {
 // ── TC submission ─────────────────────────────────────────────────────────────
 
 /// Request body for `POST /api/tc`.
-#[derive(Debug, Clone, Serialize, Deserialize)]
+#[derive(Debug, Clone, Default, Serialize, Deserialize)]
 pub struct TcSubmitRequest {
     /// TAI coarse seconds of the command's validity-window deadline.  The
     /// operator tooling converts its UTC deadline to TAI before submission.
     pub valid_until_tai_coarse: u32,
+    /// CCSDS APID of the target app.  `None` leaves the stub value (Phase C+).
+    #[serde(default)]
+    pub apid: Option<u16>,
+    /// Function code identifying the specific command.  `None` leaves the stub.
+    #[serde(default)]
+    pub func_code: Option<u16>,
 }
 
 /// Response body for `POST /api/tc`.
@@ -460,12 +470,12 @@ async fn post_tc(
     };
     check_validity_window(valid_until, now_tai, light_time_s)
         .map_err(|e: ValidityError| (StatusCode::UNPROCESSABLE_ENTITY, e.to_string()))?;
-    // Queue the command stub (apid=0, func_code=0 until the TC catalog lands).
-    // try_send is non-blocking; capacity-full means the operator should retry.
+    // Pass apid/func_code from the request when provided; fall back to 0 until
+    // the TC catalog and COP-1 encoder land in Phase C+.
     let entry = TcQueueEntry {
-        apid: 0,
-        func_code: 0,
-        payload: Vec::new(),
+        apid:                   req.apid.unwrap_or(0),
+        func_code:              req.func_code.unwrap_or(0),
+        payload:                Vec::new(),
         valid_until_tai_coarse: req.valid_until_tai_coarse,
     };
     let _ = state.tc_tx.try_send(entry);
@@ -485,6 +495,23 @@ async fn stream_snapshots(mut socket: WebSocket, state: Arc<UiState>) {
         let snapshot = build_snapshot(&state).await;
         if socket.send(Message::Text(snapshot)).await.is_err() {
             break; // client disconnected — stop streaming
+        }
+    }
+}
+
+/// Fallback handler that serves the Vite production build from `static/`.
+/// Handles SPA routing: directories append `index.html`.  I/O errors
+/// produce a 500 rather than propagating (the operator UI is the only caller).
+async fn static_handler(req: Request<Body>) -> impl IntoResponse {
+    match ServeDir::new("static")
+        .append_index_html_on_directories(true)
+        .oneshot(req)
+        .await
+    {
+        Ok(res) => res.into_response(),
+        Err(e) => {
+            log::warn!("static file serve error: {e}");
+            StatusCode::INTERNAL_SERVER_ERROR.into_response()
         }
     }
 }
@@ -552,6 +579,8 @@ pub fn router(state: Arc<UiState>) -> Router {
         .route("/api/link/fleet-dds",  get(get_fleet_dds_link))
         .route("/ws", get(ws_handler))
         .with_state(state)
+        .fallback(static_handler)
+        .layer(CorsLayer::permissive())
 }
 
 // ── Tests ─────────────────────────────────────────────────────────────────────
@@ -677,6 +706,7 @@ mod tests {
         *state.light_time_s.write().await = 5.0;
         let req = TcSubmitRequest {
             valid_until_tai_coarse: 1000,
+            ..Default::default()
         };
         let result = post_tc(State(state), Json(req)).await;
         assert!(result.is_err(), "expected Err for expired window");
@@ -697,6 +727,7 @@ mod tests {
         *state.light_time_s.write().await = 5.0;
         let req = TcSubmitRequest {
             valid_until_tai_coarse: 2000,
+            ..Default::default()
         };
         let Json(resp) = post_tc(State(state), Json(req)).await.unwrap();
         assert!(resp.accepted);

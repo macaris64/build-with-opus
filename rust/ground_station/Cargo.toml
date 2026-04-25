@@ -7,6 +7,10 @@ edition = "2021"
 name = "ground_station"
 path = "src/main.rs"
 
+[[bin]]
+name = "demo_injector"
+path = "src/bin/demo_injector.rs"
+
 [dependencies]
 anyhow     = { workspace = true }
 log        = { workspace = true }
@@ -20,6 +24,8 @@ cfdp-core  = { workspace = true }
 serde      = { workspace = true }
 serde_json = { workspace = true }
 axum       = { workspace = true }
+tower      = { version = "0.5", features = ["util"] }
+tower-http = { version = "0.5", features = ["cors", "fs"] }
 time       = { workspace = true }
 
 [dev-dependencies]
