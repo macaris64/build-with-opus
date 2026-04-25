@@ -1,4 +1,7 @@
 //! Ground station — library root for all pipeline submodules.
+// Production code must never use `.unwrap()` on Result/Option — use `?` or
+// explicit error handling. Test modules already carry `#[allow(clippy::unwrap_used)]`.
+#![deny(clippy::unwrap_used)]
 //!
 //! Submodule layout (docs/architecture/06-ground-segment-rust.md §5–10):
 //!

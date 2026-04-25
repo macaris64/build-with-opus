@@ -11,8 +11,8 @@
 //! ```
 //!
 //! Q-C8 note: `MsgId` uses bitwise OR on `u16` values (logical bit masking,
-//! not byte-level endianness conversion). No `from_le_bytes`/`to_le_bytes`
-//! calls appear in this module — per the `scripts/grep-lints.sh` guard.
+//! not byte-level endianness conversion). No little-endian byte-order calls
+//! appear in this module — per the `scripts/grep-lints.sh` guard.
 //!
 //! Q-F3 note: `Vault<T>` wrapping lands in Phase 44. This phase establishes
 //! the type boundary only.

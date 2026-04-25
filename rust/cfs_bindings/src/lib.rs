@@ -8,6 +8,9 @@
 // deny` for this crate only. Authorised by
 // docs/architecture/06-ground-segment-rust.md §1.2.
 #![allow(unsafe_code)]
+// Production code must not call `.unwrap()` on Result/Option; test modules
+// carry their own `#[allow(clippy::unwrap_used)]`.
+#![deny(clippy::unwrap_used)]
 
 //! Safe Rust wrappers around compile-time constants from `_defs/mission_config.h`.
 //!
