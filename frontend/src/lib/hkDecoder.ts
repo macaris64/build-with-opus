@@ -117,6 +117,8 @@ export function decodeHkFrame(apid: number, data: number[]): DecodedHk {
       }
     }
     case 0x300:
+    case 0x301:
+    case 0x302:
       return {
         x_m: readF32LE(data, 0).toFixed(2),
         y_m: readF32LE(data, 4).toFixed(2),
@@ -124,6 +126,10 @@ export function decodeHkFrame(apid: number, data: number[]): DecodedHk {
         speed_cm_s: readU16LE(data, 12),
       }
     case 0x3c0:
+    case 0x3c1:
+    case 0x3c2:
+    case 0x3c3:
+    case 0x3c4:
       return {
         altitude_m: readF32LE(data, 0).toFixed(2),
         x_m: readF32LE(data, 4).toFixed(2),

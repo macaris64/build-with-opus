@@ -13,7 +13,13 @@ export const APID_NAMES: Record<number, string> = {
   0x290: 'mcu_rwa_gw',
   0x2a0: 'mcu_eps_gw',
   0x300: 'rover_land',
+  0x301: 'rover_land_2',
+  0x302: 'rover_land_3',
   0x3c0: 'rover_uav',
+  0x3c1: 'rover_uav_2',
+  0x3c2: 'rover_uav_3',
+  0x3c3: 'rover_uav_4',
+  0x3c4: 'rover_uav_5',
   0x400: 'rover_cryobot',
 }
 
@@ -27,7 +33,13 @@ export const APID_NODE_IDS: Record<number, string> = {
   0x140: 'orbiter',
   0x160: 'fleet',
   0x300: 'rover-land',
+  0x301: 'rover-land-2',
+  0x302: 'rover-land-3',
   0x3c0: 'rover-uav',
+  0x3c1: 'rover-uav-2',
+  0x3c2: 'rover-uav-3',
+  0x3c3: 'rover-uav-4',
+  0x3c4: 'rover-uav-5',
   0x400: 'rover-cryobot',
 }
 

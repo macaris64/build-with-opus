@@ -193,7 +193,13 @@ fn apid_to_asset(apid: u16) -> String {
         0x140 => "orbiter_payload".into(),
         0x160 => "fleet_monitor".into(),
         0x300 => "rover_land".into(),
+        0x301 => "rover_land_2".into(),
+        0x302 => "rover_land_3".into(),
         0x3C0 => "rover_uav".into(),
+        0x3C1 => "rover_uav_2".into(),
+        0x3C2 => "rover_uav_3".into(),
+        0x3C3 => "rover_uav_4".into(),
+        0x3C4 => "rover_uav_5".into(),
         0x400 => "rover_cryobot".into(),
         _ => format!("apid_0x{apid:03X}"),
     }

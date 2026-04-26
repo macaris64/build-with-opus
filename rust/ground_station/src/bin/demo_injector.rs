@@ -102,6 +102,7 @@ fn inject_tick(socket: &UdpSocket, target: &str, s: &mut InjectorState, tai: u32
     send(socket, target, s, 0x160, VC_HK, tai, &fleet_hk(s.tick))?;
 
     // Rover housekeeping — VC 3 (APID 0x300–0x45F → RoverForward)
+    // Land rovers × 3 (0x300–0x302)
     send(
         socket,
         target,
@@ -115,11 +116,69 @@ fn inject_tick(socket: &UdpSocket, target: &str, s: &mut InjectorState, tai: u32
         socket,
         target,
         s,
+        0x301,
+        VC_ROVER,
+        tai,
+        &rover_land_hk_n(s.tick, -8.0, 5.0, 2.0),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x302,
+        VC_ROVER,
+        tai,
+        &rover_land_hk_n(s.tick, 3.0, -6.0, 4.0),
+    )?;
+
+    // Aerial drones × 5 (0x3C0–0x3C4)
+    send(
+        socket,
+        target,
+        s,
         0x3c0,
         VC_ROVER,
         tai,
         &rover_uav_hk(s.tick),
     )?;
+    send(
+        socket,
+        target,
+        s,
+        0x3c1,
+        VC_ROVER,
+        tai,
+        &rover_uav_hk_n(s.tick, -6.0, 4.0, 6.0, 1.2, 0.13),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x3c2,
+        VC_ROVER,
+        tai,
+        &rover_uav_hk_n(s.tick, 8.0, -3.0, 4.0, 2.4, 0.21),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x3c3,
+        VC_ROVER,
+        tai,
+        &rover_uav_hk_n(s.tick, -3.0, -7.0, 7.0, 0.7, 0.15),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x3c4,
+        VC_ROVER,
+        tai,
+        &rover_uav_hk_n(s.tick, 5.0, 7.0, 5.0, 3.1, 0.19),
+    )?;
+
+    // Cryobot × 1 (0x400)
     send(
         socket,
         target,
@@ -383,6 +442,50 @@ fn rover_cryo_hk(tick: u32) -> Vec<u8> {
     v.extend_from_slice(&f32le(depth));
     v.extend_from_slice(&f32le(rpm));
     v.extend_from_slice(&temp_i16.to_le_bytes());
+    v
+}
+
+/// APID 0x301–0x302 — Additional land rovers with distinct base positions and phases.
+///
+/// Payload layout matches the 0x300 decoder in `hkDecoder.ts`:
+/// bytes 0–3: x_m (F32LE), 4–7: y_m (F32LE), 8–11: heading_deg (F32LE), 12–13: speed_cm_s (U16LE)
+fn rover_land_hk_n(tick: u32, base_x: f32, base_z: f32, phase: f32) -> Vec<u8> {
+    let t = tick as f32;
+    let x = base_x + (t * 0.05 + phase).sin() * 2.0;
+    let z = base_z + (t * 0.04 + phase + 1.0).cos() * 2.0;
+    let heading = (t * 2.0 + phase * 57.3) % 360.0;
+    let speed_cm_s = (10.0f32 + (t * 0.3 + phase).sin().abs() * 20.0) as u16;
+    let mut v = Vec::new();
+    v.extend_from_slice(&f32le(x));
+    v.extend_from_slice(&f32le(z));
+    v.extend_from_slice(&f32le(heading));
+    v.extend_from_slice(&u16le(speed_cm_s));
+    v
+}
+
+/// APID 0x3C1–0x3C4 — Additional UAV drones with distinct base positions and hover phases.
+///
+/// Payload layout matches the 0x3C0 decoder in `hkDecoder.ts`:
+/// bytes 0–3: altitude_m (F32LE), 4–7: x_m (F32LE), 8–11: y_m (F32LE), 12–15: battery_pct (F32LE)
+fn rover_uav_hk_n(
+    tick: u32,
+    base_x: f32,
+    base_z: f32,
+    base_y: f32,
+    hover_phase: f32,
+    orbit_speed: f32,
+) -> Vec<u8> {
+    let t = tick as f32;
+    let hover_speed = 0.9 + hover_phase * 0.15;
+    let alt = base_y + (t * hover_speed + hover_phase).sin() * 0.4;
+    let x = base_x + (t * orbit_speed + hover_phase).sin() * 1.5;
+    let z = base_z + (t * orbit_speed + hover_phase + 1.5).cos() * 1.5;
+    let batt = 80.0f32 + (t * 0.007 + hover_phase).sin() * 10.0;
+    let mut v = Vec::new();
+    v.extend_from_slice(&f32le(alt));
+    v.extend_from_slice(&f32le(x));
+    v.extend_from_slice(&f32le(z));
+    v.extend_from_slice(&f32le(batt));
     v
 }
 
