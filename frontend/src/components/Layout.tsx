@@ -1,6 +1,7 @@
 import clsx from 'clsx'
 import { SpaceScene } from '../scene/SpaceScene'
 import { MarsGroundScene } from '../scene/MarsGroundScene'
+import { TitanGroundScene } from '../scene/TitanGroundScene'
 import { LinkHealthBar } from '../panels/LinkHealthBar'
 import { HkPanel } from '../panels/HkPanel'
 import { EventLog } from '../panels/EventLog'
@@ -9,6 +10,7 @@ import { Cop1Status } from '../panels/Cop1Status'
 import { CfdpProgress } from '../panels/CfdpProgress'
 import { CommandPanel } from '../commands/CommandPanel'
 import { MarsPacketPanel } from '../panels/MarsPacketPanel'
+import { TitanPacketPanel } from '../panels/TitanPacketPanel'
 import { useUiStore } from '../store/uiStore'
 import type { ActiveView } from '../store/uiStore'
 
@@ -23,7 +25,8 @@ const TABS: { id: Tab; label: string }[] = [
 
 const VIEW_TABS: { id: ActiveView; label: string }[] = [
   { id: 'space', label: 'SPACE VIEW' },
-  { id: 'mars', label: 'MARS VIEW' },
+  { id: 'mars',  label: 'MARS VIEW' },
+  { id: 'titan', label: 'TITAN VIEW' },
 ]
 
 export function Layout() {
@@ -47,7 +50,9 @@ export function Layout() {
                 activeView === tab.id
                   ? tab.id === 'mars'
                     ? 'text-orange-400 border-b-2 border-orange-400 bg-orange-400/5'
-                    : 'text-cyan-400 border-b-2 border-cyan-400 bg-cyan-400/5'
+                    : tab.id === 'titan'
+                      ? 'text-amber-500 border-b-2 border-amber-500 bg-amber-500/5'
+                      : 'text-cyan-400 border-b-2 border-cyan-400 bg-cyan-400/5'
                   : 'text-gray-500 hover:text-gray-300',
               )}
             >
@@ -58,7 +63,9 @@ export function Layout() {
 
         {/* 3D scene */}
         <div className="flex-1 relative min-h-0">
-          {activeView === 'space' ? <SpaceScene /> : <MarsGroundScene />}
+          {activeView === 'space' && <SpaceScene />}
+          {activeView === 'mars'  && <MarsGroundScene />}
+          {activeView === 'titan' && <TitanGroundScene />}
 
           {/* Space view overlays */}
           {activeView === 'space' && (
@@ -79,6 +86,13 @@ export function Layout() {
 
           {/* Mars view overlays */}
           {activeView === 'mars' && (
+            <div className="absolute top-3 left-3 text-xs text-gray-500 font-mono pointer-events-none">
+              Click vehicle to inspect · Drag to orbit
+            </div>
+          )}
+
+          {/* Titan view overlays */}
+          {activeView === 'titan' && (
             <div className="absolute top-3 left-3 text-xs text-gray-500 font-mono pointer-events-none">
               Click vehicle to inspect · Drag to orbit
             </div>
@@ -125,8 +139,10 @@ export function Layout() {
               {sidebarTab === 'cfdp' && <CfdpProgress />}
             </div>
           </>
-        ) : (
+        ) : activeView === 'mars' ? (
           <MarsPacketPanel />
+        ) : (
+          <TitanPacketPanel />
         )}
       </div>
     </div>

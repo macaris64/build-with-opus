@@ -64,20 +64,9 @@ services:
       dockerfile: .ci/gazebo.Dockerfile
     volumes:
       - ./simulation:/app/simulation:ro
-      - /tmp/.X11-unix:/tmp/.X11-unix:rw
     command: >
-      bash -c "
-        if [ -n \"$$DISPLAY\" ]; then
-          gz sim server -r /app/simulation/worlds/mars_surrogate.sdf &
-          sleep 4 &&
-          gz sim gui &
-          wait;
-        else
-          gz sim -r -s /app/simulation/worlds/mars_surrogate.sdf;
-        fi
-      "
+      gz sim -r -s /app/simulation/worlds/mars_surrogate.sdf
     environment:
-      - DISPLAY
       - GZ_IP=127.0.0.1
       - GZ_PARTITION=sakura
       - LIBGL_ALWAYS_SOFTWARE=1

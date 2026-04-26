@@ -189,6 +189,122 @@ fn inject_tick(socket: &UdpSocket, target: &str, s: &mut InjectorState, tai: u32
         &rover_cryo_hk(s.tick),
     )?;
 
+    // ── Titan vehicles (0x410–0x433, still within ROVER_TM 0x300–0x45F range) ─
+
+    // Titan land rovers × 3 (0x410–0x412)
+    send(
+        socket,
+        target,
+        s,
+        0x410,
+        VC_ROVER,
+        tai,
+        &titan_rover_hk(s.tick, 12.0, 8.0, 0.0),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x411,
+        VC_ROVER,
+        tai,
+        &titan_rover_hk(s.tick, -11.0, 6.0, 1.5),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x412,
+        VC_ROVER,
+        tai,
+        &titan_rover_hk(s.tick, 8.0, -10.0, 3.0),
+    )?;
+
+    // Titan UAVs × 5 (0x420–0x424)
+    send(
+        socket,
+        target,
+        s,
+        0x420,
+        VC_ROVER,
+        tai,
+        &titan_uav_hk(s.tick, 0.0, 0.0, 12.0, 0.0, 0.17),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x421,
+        VC_ROVER,
+        tai,
+        &titan_uav_hk(s.tick, -7.0, 5.0, 14.0, 1.2, 0.13),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x422,
+        VC_ROVER,
+        tai,
+        &titan_uav_hk(s.tick, 9.0, -4.0, 11.0, 2.4, 0.21),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x423,
+        VC_ROVER,
+        tai,
+        &titan_uav_hk(s.tick, -3.0, -8.0, 13.0, 0.7, 0.15),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x424,
+        VC_ROVER,
+        tai,
+        &titan_uav_hk(s.tick, 6.0, 6.0, 15.0, 3.1, 0.19),
+    )?;
+
+    // Titan cryobots × 4 (0x430–0x433)
+    send(
+        socket,
+        target,
+        s,
+        0x430,
+        VC_ROVER,
+        tai,
+        &titan_cryo_hk(s.tick, 0.0, 0.0),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x431,
+        VC_ROVER,
+        tai,
+        &titan_cryo_hk(s.tick, 2.0, 1.2),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x432,
+        VC_ROVER,
+        tai,
+        &titan_cryo_hk(s.tick, 5.0, 2.4),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x433,
+        VC_ROVER,
+        tai,
+        &titan_cryo_hk(s.tick, 8.0, 0.9),
+    )?;
+
     // Event log — VC 1 (any non-forbidden APID works; use the source app APID)
     let (ev_apid, ev_sev, ev_msg) = event_template(s.tick);
     send(
@@ -486,6 +602,60 @@ fn rover_uav_hk_n(
     v.extend_from_slice(&f32le(x));
     v.extend_from_slice(&f32le(z));
     v.extend_from_slice(&f32le(batt));
+    v
+}
+
+// ── Titan HK payloads (0x410–0x433, RoverForward range) ──────────────────────
+
+/// APID 0x410–0x412 — Titan land rover: pos_x, pos_z, heading (f32 LE) + battery (u16 LE)
+fn titan_rover_hk(tick: u32, base_x: f32, base_z: f32, phase: f32) -> Vec<u8> {
+    let t = tick as f32;
+    let x = base_x + (t * 0.04 + phase).sin() * 1.5;
+    let z = base_z + (t * 0.03 + phase + 1.0).cos() * 1.5;
+    let heading = (t * 1.8 + phase * 57.3) % 360.0;
+    let battery = (75.0f32 + (t * 0.008 + phase).sin() * 10.0) as u16;
+    let mut v = Vec::new();
+    v.extend_from_slice(&f32le(x));
+    v.extend_from_slice(&f32le(z));
+    v.extend_from_slice(&f32le(heading));
+    v.extend_from_slice(&u16le(battery));
+    v
+}
+
+/// APID 0x420–0x424 — Titan UAV: altitude, pos_x, pos_z, battery_pct (f32 LE)
+fn titan_uav_hk(
+    tick: u32,
+    base_x: f32,
+    base_z: f32,
+    base_y: f32,
+    hover_phase: f32,
+    orbit_speed: f32,
+) -> Vec<u8> {
+    let t = tick as f32;
+    let hover_speed = 1.0 + hover_phase * 0.12;
+    let alt = base_y + (t * hover_speed + hover_phase).sin() * 0.4;
+    let x = base_x + (t * orbit_speed + hover_phase).sin() * 1.2;
+    let z = base_z + (t * orbit_speed + hover_phase + 1.5).cos() * 1.2;
+    let batt = 75.0f32 + (t * 0.006 + hover_phase).sin() * 12.0;
+    let mut v = Vec::new();
+    v.extend_from_slice(&f32le(alt));
+    v.extend_from_slice(&f32le(x));
+    v.extend_from_slice(&f32le(z));
+    v.extend_from_slice(&f32le(batt));
+    v
+}
+
+/// APID 0x430–0x433 — Titan cryobot: depth_m, drill_rpm (f32 LE) + temp_c×10 (i16 LE)
+fn titan_cryo_hk(tick: u32, base_depth: f32, rpm_phase: f32) -> Vec<u8> {
+    let t = tick as f32;
+    let depth = base_depth + t * 0.003;
+    let rpm = 400.0f32 + (t * 0.09 + rpm_phase).sin() * 80.0;
+    // Titan surface temp ≈ −179 °C; stored as integer × 10
+    let temp_raw = (-1790.0f32 + (t * 0.015 + rpm_phase).sin() * 30.0) as i16;
+    let mut v = Vec::new();
+    v.extend_from_slice(&f32le(depth));
+    v.extend_from_slice(&f32le(rpm));
+    v.extend_from_slice(&temp_raw.to_le_bytes());
     v
 }
 

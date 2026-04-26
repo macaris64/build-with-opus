@@ -46,6 +46,9 @@ SAKURA-II allocation within the usable window:
 | `0x380`–`0x3BF` | Rover-Land TC | Space ROS 2 land rover | uplink (via relay) | 64 APIDs |
 | `0x3C0`–`0x3FF` | Rover-UAV TM/TC | Space ROS 2 UAV | bidirectional | 64 APIDs |
 | `0x400`–`0x43F` | Rover-Cryobot TM | Subsurface rover | downlink (tether-gated) | 64 APIDs; low-BW, see note |
+| `0x410`–`0x412` | Titan Rover TM | Titan surface land rovers (3) | downlink (RoverForward VC 3) | posX/posZ/heading/battery; routed as `RoverForward` |
+| `0x420`–`0x424` | Titan UAV TM | Titan aerial UAVs (5) | downlink (RoverForward VC 3) | altitude/posX/posZ/battery; routed as `RoverForward` |
+| `0x430`–`0x433` | Titan Cryobot TM | Titan methane-lake cryobots (4) | downlink (RoverForward VC 3) | drillDepth/motorRpm/temp; routed as `RoverForward` |
 | `0x440`–`0x45F` | Rover-Cryobot TC | Subsurface rover | uplink (tether-gated) | 32 APIDs |
 | `0x500`–`0x57F` | Sim injection | Gazebo → FSW | sideband | 128 APIDs; never flight-path; see [`ICD-sim-fsw.md`](ICD-sim-fsw.md) (planned) |
 | `0x600`–`0x67F` | Ground-segment internal | within `rust/ground_station/` | N/A | Not on any RF link; local bus only |
