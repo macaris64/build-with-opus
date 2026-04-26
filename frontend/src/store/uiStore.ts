@@ -2,7 +2,7 @@ import { create } from 'zustand'
 import type { CommandState } from '../types/commands'
 
 type SidebarTab = 'hk' | 'events' | 'commands' | 'cfdp'
-export type ActiveView = 'space' | 'mars'
+export type ActiveView = 'space' | 'mars' | 'titan'
 
 interface UiStore {
   selectedNodeId: string | null

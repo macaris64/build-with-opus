@@ -590,7 +590,8 @@ pub fn router(state: Arc<UiState>) -> Router {
     clippy::unwrap_used,
     clippy::panic,
     clippy::expect_used,
-    clippy::float_cmp
+    clippy::float_cmp,
+    clippy::indexing_slicing
 )]
 mod tests {
     use super::*;

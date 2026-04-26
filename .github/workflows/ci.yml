@@ -46,6 +46,7 @@ jobs:
       traceability: ${{ steps.f.outputs.traceability }}
       docs:         ${{ steps.f.outputs.docs }}
       puml:         ${{ steps.f.outputs.puml }}
+      frontend:     ${{ steps.f.outputs.frontend }}
     steps:
       - uses: dorny/paths-filter@v3
         id: f
@@ -71,6 +72,11 @@ jobs:
               - 'README.md'
             puml:
               - '**/*.puml'
+            frontend:
+              - 'frontend/src/**'
+              - 'frontend/package.json'
+              - 'frontend/vitest.config.ts'
+              - 'frontend/tsconfig*.json'
 
   # ──────────────────────────────────────────────────────────────────────────
   # 2.1  cfs-ctest — SYS-REQ-0070
@@ -423,3 +429,40 @@ jobs:
         run: |
           export PATH=".ci/node_modules/.bin:$PATH"
           bash scripts/mermaid-parse.sh docs/
+
+  # ──────────────────────────────────────────────────────────────────────────
+  # Frontend — type-check, unit tests, 80% coverage gate
+  # ──────────────────────────────────────────────────────────────────────────
+  frontend-test:
+    name: frontend-test
+    runs-on: ubuntu-22.04
+    needs: [changes]
+    if: |
+      always() &&
+      (github.event_name != 'pull_request' ||
+       needs.changes.outputs.frontend == 'true')
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('frontend/package-lock.json') }}
+          restore-keys: ${{ runner.os }}-npm-
+
+      - name: Install dependencies
+        run: cd frontend && npm install
+
+      - name: TypeScript type-check
+        run: cd frontend && npx tsc -b --noEmit
+
+      - name: Run tests with coverage
+        run: cd frontend && npm run test:coverage
+
+      - name: Upload coverage report
+        uses: actions/upload-artifact@v4
+        with:
+          name: frontend-coverage
+          path: frontend/coverage/
+          retention-days: 7

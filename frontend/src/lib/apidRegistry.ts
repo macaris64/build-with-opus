@@ -21,6 +21,21 @@ export const APID_NAMES: Record<number, string> = {
   0x3c3: 'rover_uav_4',
   0x3c4: 'rover_uav_5',
   0x400: 'rover_cryobot',
+  // Titan Land Rovers
+  0x410: 'titan_rover_1',
+  0x411: 'titan_rover_2',
+  0x412: 'titan_rover_3',
+  // Titan UAVs
+  0x420: 'titan_uav_1',
+  0x421: 'titan_uav_2',
+  0x422: 'titan_uav_3',
+  0x423: 'titan_uav_4',
+  0x424: 'titan_uav_5',
+  // Titan Cryobots
+  0x430: 'titan_cryobot_1',
+  0x431: 'titan_cryobot_2',
+  0x432: 'titan_cryobot_3',
+  0x433: 'titan_cryobot_4',
 }
 
 export const APID_NODE_IDS: Record<number, string> = {

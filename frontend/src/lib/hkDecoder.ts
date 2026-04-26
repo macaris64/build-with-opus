@@ -145,6 +145,41 @@ export function decodeHkFrame(apid: number, data: number[]): DecodedHk {
         borehole_temp_C: temp.toFixed(1),
       }
     }
+    // Titan Land Rovers
+    case 0x410:
+    case 0x411:
+    case 0x412:
+      return {
+        x_m: readF32LE(data, 0).toFixed(2),
+        y_m: readF32LE(data, 4).toFixed(2),
+        heading_deg: readF32LE(data, 8).toFixed(1),
+        battery_pct: readU16LE(data, 12),
+      }
+    // Titan UAVs
+    case 0x420:
+    case 0x421:
+    case 0x422:
+    case 0x423:
+    case 0x424:
+      return {
+        altitude_m: readF32LE(data, 0).toFixed(2),
+        x_m: readF32LE(data, 4).toFixed(2),
+        y_m: readF32LE(data, 8).toFixed(2),
+        battery_pct: readF32LE(data, 12).toFixed(1),
+      }
+    // Titan Cryobots
+    case 0x430:
+    case 0x431:
+    case 0x432:
+    case 0x433: {
+      const tempRaw = readU16LE(data, 8)
+      const temp = (tempRaw > 32767 ? tempRaw - 65536 : tempRaw) / 10
+      return {
+        depth_m: readF32LE(data, 0).toFixed(3),
+        drill_rpm: readF32LE(data, 4).toFixed(0),
+        borehole_temp_C: temp.toFixed(1),
+      }
+    }
     default:
       return { raw_hex: hexDump(data.slice(0, 32)) }
   }

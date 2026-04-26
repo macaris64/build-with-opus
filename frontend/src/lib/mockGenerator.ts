@@ -101,6 +101,30 @@ function roverCryoData(): number[] {
   return [...f32LE(depth), ...f32LE(rpm), t16 & 0xff, (t16 >> 8) & 0xff]
 }
 
+function titanRoverData(phase: number): number[] {
+  const x = Math.sin(tick * 0.04 + phase) * 2.0
+  const z = Math.cos(tick * 0.03 + phase) * 2.0
+  const heading = (tick * 1.8 + phase * 57.3) % 360
+  const battery = Math.round(75 + Math.sin(tick * 0.008 + phase) * 10)
+  return [...f32LE(x), ...f32LE(z), ...f32LE(heading), battery & 0xff, (battery >> 8) & 0xff]
+}
+
+function titanUavData(phase: number, baseAlt: number): number[] {
+  const alt = baseAlt + Math.sin(tick * 1.0 + phase) * 0.4
+  const x = Math.sin(tick * 0.17 + phase) * 1.2
+  const z = Math.cos(tick * 0.17 + phase) * 1.2
+  const batt = 75 + Math.sin(tick * 0.006 + phase) * 12
+  return [...f32LE(alt), ...f32LE(x), ...f32LE(z), ...f32LE(batt)]
+}
+
+function titanCryoData(baseDepth: number, phase: number): number[] {
+  const depth = baseDepth + tick * 0.003
+  const rpm = 400 + Math.sin(tick * 0.09 + phase) * 80
+  const tempRaw = Math.round(-1790 + Math.sin(tick * 0.015 + phase) * 30)
+  const t16 = tempRaw < 0 ? tempRaw + 65536 : tempRaw
+  return [...f32LE(depth), ...f32LE(rpm), t16 & 0xff, (t16 >> 8) & 0xff]
+}
+
 const EVENT_TEMPLATES: Array<[number, string, number]> = [
   [0x101, 'CDH: Scheduler cycle complete. Mode=NOMINAL', 1],
   [0x110, 'ADCS: Attitude estimate converged. Max dev=0.003 deg', 1],
@@ -143,6 +167,21 @@ export function generateSnapshot(): WsSnapshot {
     makeHk('rover_land',     0x300, roverLandData()),
     makeHk('rover_uav',      0x3c0, roverUavData()),
     makeHk('rover_cryobot',  0x400, roverCryoData()),
+    // Titan Land Rovers
+    makeHk('titan_rover_1',  0x410, titanRoverData(0.0)),
+    makeHk('titan_rover_2',  0x411, titanRoverData(1.5)),
+    makeHk('titan_rover_3',  0x412, titanRoverData(3.0)),
+    // Titan UAVs
+    makeHk('titan_uav_1',    0x420, titanUavData(0.0, 12.0)),
+    makeHk('titan_uav_2',    0x421, titanUavData(1.2, 14.0)),
+    makeHk('titan_uav_3',    0x422, titanUavData(2.4, 11.0)),
+    makeHk('titan_uav_4',    0x423, titanUavData(0.7, 13.0)),
+    makeHk('titan_uav_5',    0x424, titanUavData(3.1, 15.0)),
+    // Titan Cryobots
+    makeHk('titan_cryobot_1', 0x430, titanCryoData(0.0, 0.0)),
+    makeHk('titan_cryobot_2', 0x431, titanCryoData(2.0, 1.2)),
+    makeHk('titan_cryobot_3', 0x432, titanCryoData(5.0, 2.4)),
+    makeHk('titan_cryobot_4', 0x433, titanCryoData(8.0, 0.9)),
   ]
 
   const linkName = (s: string) => ({ link: s, apid: s === 'cfs-ros' ? 0x128 : s === 'ros-ground' ? 0x129 : 0x160, last_hk_utc: new Date().toISOString() })

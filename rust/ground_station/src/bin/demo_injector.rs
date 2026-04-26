@@ -6,8 +6,8 @@
 //!
 //! Routing rules satisfied (see `ingest/router.rs`):
 //!   VC 0  APID 0x100–0x17F → Hk      (orbiter housekeeping)
-//!   VC 1  any non-forbidden APID → EventLog
-//!   VC 3  APID 0x300–0x45F → RoverForward → merged into HK store
+//!   VC 1  any non-forbidden APID → `EventLog`
+//!   VC 3  APID 0x300–0x45F → `RoverForward` → merged into HK store
 //!
 //! # Usage
 //! ```
@@ -26,7 +26,10 @@
     clippy::cast_lossless,
     clippy::missing_errors_doc,
     clippy::missing_panics_doc,
-    clippy::too_many_lines
+    clippy::too_many_lines,
+    // demo tool: all frame indices are constant-bounded (vec![0u8; AOS_FRAME_LEN])
+    // and EVENTS index is guaranteed in-bounds by modulo; panics acceptable here.
+    clippy::indexing_slicing
 )]
 
 use anyhow::Result;
@@ -189,6 +192,122 @@ fn inject_tick(socket: &UdpSocket, target: &str, s: &mut InjectorState, tai: u32
         &rover_cryo_hk(s.tick),
     )?;
 
+    // ── Titan vehicles (0x410–0x433, still within ROVER_TM 0x300–0x45F range) ─
+
+    // Titan land rovers × 3 (0x410–0x412)
+    send(
+        socket,
+        target,
+        s,
+        0x410,
+        VC_ROVER,
+        tai,
+        &titan_rover_hk(s.tick, 12.0, 8.0, 0.0),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x411,
+        VC_ROVER,
+        tai,
+        &titan_rover_hk(s.tick, -11.0, 6.0, 1.5),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x412,
+        VC_ROVER,
+        tai,
+        &titan_rover_hk(s.tick, 8.0, -10.0, 3.0),
+    )?;
+
+    // Titan UAVs × 5 (0x420–0x424)
+    send(
+        socket,
+        target,
+        s,
+        0x420,
+        VC_ROVER,
+        tai,
+        &titan_uav_hk(s.tick, 0.0, 0.0, 12.0, 0.0, 0.17),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x421,
+        VC_ROVER,
+        tai,
+        &titan_uav_hk(s.tick, -7.0, 5.0, 14.0, 1.2, 0.13),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x422,
+        VC_ROVER,
+        tai,
+        &titan_uav_hk(s.tick, 9.0, -4.0, 11.0, 2.4, 0.21),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x423,
+        VC_ROVER,
+        tai,
+        &titan_uav_hk(s.tick, -3.0, -8.0, 13.0, 0.7, 0.15),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x424,
+        VC_ROVER,
+        tai,
+        &titan_uav_hk(s.tick, 6.0, 6.0, 15.0, 3.1, 0.19),
+    )?;
+
+    // Titan cryobots × 4 (0x430–0x433)
+    send(
+        socket,
+        target,
+        s,
+        0x430,
+        VC_ROVER,
+        tai,
+        &titan_cryo_hk(s.tick, 0.0, 0.0),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x431,
+        VC_ROVER,
+        tai,
+        &titan_cryo_hk(s.tick, 2.0, 1.2),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x432,
+        VC_ROVER,
+        tai,
+        &titan_cryo_hk(s.tick, 5.0, 2.4),
+    )?;
+    send(
+        socket,
+        target,
+        s,
+        0x433,
+        VC_ROVER,
+        tai,
+        &titan_cryo_hk(s.tick, 8.0, 0.9),
+    )?;
+
     // Event log — VC 1 (any non-forbidden APID works; use the source app APID)
     let (ev_apid, ev_sev, ev_msg) = event_template(s.tick);
     send(
@@ -308,7 +427,7 @@ fn u16le(v: u16) -> [u8; 2] {
 
 // ── Orbiter HK payloads ───────────────────────────────────────────────────────
 
-/// APID 0x101 — CDH: mode, cmd_counter, err_counter, uptime
+/// APID 0x101 — CDH: mode, `cmd_counter`, `err_counter`, uptime
 fn cdh_hk(tick: u32) -> Vec<u8> {
     let mut v = vec![0x01u8, 0x00, (tick & 0xFF) as u8, 0x00, 0x00, 0x00];
     v.extend_from_slice(&u32le(tick));
@@ -332,7 +451,7 @@ fn adcs_hk(tick: u32) -> Vec<u8> {
     v
 }
 
-/// APID 0x120 — COMM: mode, vc0_rate, cmd_counter
+/// APID 0x120 — COMM: mode, `vc0_rate`, `cmd_counter`
 fn comm_hk(tick: u32) -> Vec<u8> {
     vec![
         0x01,
@@ -346,7 +465,7 @@ fn comm_hk(tick: u32) -> Vec<u8> {
     ]
 }
 
-/// APID 0x128 — ros2_bridge: 6 × u32 LE counters
+/// APID 0x128 — `ros2_bridge`: 6 × u32 LE counters
 fn ros2_bridge_hk(tick: u32) -> Vec<u8> {
     let mut v = Vec::new();
     v.extend_from_slice(&u32le(tick * 3)); // packets_routed
@@ -358,7 +477,7 @@ fn ros2_bridge_hk(tick: u32) -> Vec<u8> {
     v
 }
 
-/// APID 0x129 — Proximity-1: session_active, signal_strength, last_contact (f64 BE)
+/// APID 0x129 — Proximity-1: `session_active`, `signal_strength`, `last_contact` (f64 BE)
 fn prx1_hk(tick: u32) -> Vec<u8> {
     let strength = (180.0f32 + (tick as f32 * 0.1).sin() * 60.0) as u8;
     let contact_s = (1_700_000_000.0f64 + tick as f64).to_be_bytes();
@@ -367,7 +486,7 @@ fn prx1_hk(tick: u32) -> Vec<u8> {
     v
 }
 
-/// APID 0x130 — Power: bus_voltage_mv, battery_pct, solar_current_ma (all u16 LE)
+/// APID 0x130 — Power: `bus_voltage_mv`, `battery_pct`, `solar_current_ma` (all u16 LE)
 fn power_hk(tick: u32) -> Vec<u8> {
     let voltage_mv = (28_000.0f32 + (tick as f32 * 0.05).sin() * 1_400.0) as u16;
     let battery_pct = (90u32).saturating_sub(tick / 120) as u16;
@@ -380,7 +499,7 @@ fn power_hk(tick: u32) -> Vec<u8> {
     v
 }
 
-/// APID 0x140 — Payload: active, data_rate, frame_count
+/// APID 0x140 — Payload: active, `data_rate`, `frame_count`
 fn payload_hk(tick: u32) -> Vec<u8> {
     let frame_count = (tick & 0xFFFF) as u16;
     let mut v = vec![0x01u8, 0x00];
@@ -390,7 +509,7 @@ fn payload_hk(tick: u32) -> Vec<u8> {
     v
 }
 
-/// APID 0x160 — fleet_monitor: health_mask + 3 × age_ms (u32 BE)
+/// APID 0x160 — `fleet_monitor`: `health_mask` + 3 × `age_ms` (u32 BE)
 fn fleet_hk(tick: u32) -> Vec<u8> {
     let land_age = (800.0f32 + (tick as f32 * 0.15).sin() * 100.0) as u32;
     let uav_age = (900.0f32 + (tick as f32 * 0.12).sin() * 150.0) as u32;
@@ -404,7 +523,7 @@ fn fleet_hk(tick: u32) -> Vec<u8> {
 
 // ── Rover HK payloads ─────────────────────────────────────────────────────────
 
-/// APID 0x300 — Land rover: pos_x, pos_y, heading (f32 LE) + mode + status
+/// APID 0x300 — Land rover: `pos_x`, `pos_y`, heading (f32 LE) + mode + status
 fn rover_land_hk(tick: u32) -> Vec<u8> {
     let x = tick as f32 * 0.05;
     let y = (tick as f32 * 0.03).sin() * 10.0;
@@ -418,7 +537,7 @@ fn rover_land_hk(tick: u32) -> Vec<u8> {
     v
 }
 
-/// APID 0x3C0 — UAV: altitude, pos_x, pos_y, battery_pct (f32 LE)
+/// APID 0x3C0 — UAV: altitude, `pos_x`, `pos_y`, `battery_pct` (f32 LE)
 fn rover_uav_hk(tick: u32) -> Vec<u8> {
     let alt = 50.0f32 + (tick as f32 * 0.05).sin() * 10.0;
     let x = (tick as f32 * 0.03).cos() * 30.0;
@@ -432,7 +551,7 @@ fn rover_uav_hk(tick: u32) -> Vec<u8> {
     v
 }
 
-/// APID 0x400 — Cryobot: depth_m, drill_rpm (f32 LE) + temp_c×10 (i16 LE)
+/// APID 0x400 — Cryobot: `depth_m`, `drill_rpm` (f32 LE) + `temp_c×10` (i16 LE)
 fn rover_cryo_hk(tick: u32) -> Vec<u8> {
     let depth = tick as f32 * 0.002;
     let rpm = 450.0f32 + (tick as f32 * 0.1).sin() * 50.0;
@@ -448,7 +567,7 @@ fn rover_cryo_hk(tick: u32) -> Vec<u8> {
 /// APID 0x301–0x302 — Additional land rovers with distinct base positions and phases.
 ///
 /// Payload layout matches the 0x300 decoder in `hkDecoder.ts`:
-/// bytes 0–3: x_m (F32LE), 4–7: y_m (F32LE), 8–11: heading_deg (F32LE), 12–13: speed_cm_s (U16LE)
+/// bytes 0–3: `x_m` (F32LE), 4–7: `y_m` (F32LE), 8–11: `heading_deg` (F32LE), 12–13: `speed_cm_s` (U16LE)
 fn rover_land_hk_n(tick: u32, base_x: f32, base_z: f32, phase: f32) -> Vec<u8> {
     let t = tick as f32;
     let x = base_x + (t * 0.05 + phase).sin() * 2.0;
@@ -466,7 +585,7 @@ fn rover_land_hk_n(tick: u32, base_x: f32, base_z: f32, phase: f32) -> Vec<u8> {
 /// APID 0x3C1–0x3C4 — Additional UAV drones with distinct base positions and hover phases.
 ///
 /// Payload layout matches the 0x3C0 decoder in `hkDecoder.ts`:
-/// bytes 0–3: altitude_m (F32LE), 4–7: x_m (F32LE), 8–11: y_m (F32LE), 12–15: battery_pct (F32LE)
+/// bytes 0–3: `altitude_m` (F32LE), 4–7: `x_m` (F32LE), 8–11: `y_m` (F32LE), 12–15: `battery_pct` (F32LE)
 fn rover_uav_hk_n(
     tick: u32,
     base_x: f32,
@@ -486,6 +605,60 @@ fn rover_uav_hk_n(
     v.extend_from_slice(&f32le(x));
     v.extend_from_slice(&f32le(z));
     v.extend_from_slice(&f32le(batt));
+    v
+}
+
+// ── Titan HK payloads (0x410–0x433, RoverForward range) ──────────────────────
+
+/// APID 0x410–0x412 — Titan land rover: `pos_x`, `pos_z`, heading (f32 LE) + battery (u16 LE)
+fn titan_rover_hk(tick: u32, base_x: f32, base_z: f32, phase: f32) -> Vec<u8> {
+    let t = tick as f32;
+    let x = base_x + (t * 0.04 + phase).sin() * 1.5;
+    let z = base_z + (t * 0.03 + phase + 1.0).cos() * 1.5;
+    let heading = (t * 1.8 + phase * 57.3) % 360.0;
+    let battery = (75.0f32 + (t * 0.008 + phase).sin() * 10.0) as u16;
+    let mut v = Vec::new();
+    v.extend_from_slice(&f32le(x));
+    v.extend_from_slice(&f32le(z));
+    v.extend_from_slice(&f32le(heading));
+    v.extend_from_slice(&u16le(battery));
+    v
+}
+
+/// APID 0x420–0x424 — Titan UAV: altitude, `pos_x`, `pos_z`, `battery_pct` (f32 LE)
+fn titan_uav_hk(
+    tick: u32,
+    base_x: f32,
+    base_z: f32,
+    base_y: f32,
+    hover_phase: f32,
+    orbit_speed: f32,
+) -> Vec<u8> {
+    let t = tick as f32;
+    let hover_speed = 1.0 + hover_phase * 0.12;
+    let alt = base_y + (t * hover_speed + hover_phase).sin() * 0.4;
+    let x = base_x + (t * orbit_speed + hover_phase).sin() * 1.2;
+    let z = base_z + (t * orbit_speed + hover_phase + 1.5).cos() * 1.2;
+    let batt = 75.0f32 + (t * 0.006 + hover_phase).sin() * 12.0;
+    let mut v = Vec::new();
+    v.extend_from_slice(&f32le(alt));
+    v.extend_from_slice(&f32le(x));
+    v.extend_from_slice(&f32le(z));
+    v.extend_from_slice(&f32le(batt));
+    v
+}
+
+/// APID 0x430–0x433 — Titan cryobot: `depth_m`, `drill_rpm` (f32 LE) + `temp_c×10` (i16 LE)
+fn titan_cryo_hk(tick: u32, base_depth: f32, rpm_phase: f32) -> Vec<u8> {
+    let t = tick as f32;
+    let depth = base_depth + t * 0.003;
+    let rpm = 400.0f32 + (t * 0.09 + rpm_phase).sin() * 80.0;
+    // Titan surface temp ≈ −179 °C; stored as integer × 10
+    let temp_raw = (-1790.0f32 + (t * 0.015 + rpm_phase).sin() * 30.0) as i16;
+    let mut v = Vec::new();
+    v.extend_from_slice(&f32le(depth));
+    v.extend_from_slice(&f32le(rpm));
+    v.extend_from_slice(&temp_raw.to_le_bytes());
     v
 }
 
