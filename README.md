@@ -1,6 +1,11 @@
-# space-systems-boilerplate
+# cFS - Space ROS Integration
 
-Claude Code boilerplate for mission-critical space software. Demonstrates every Claude Code feature — skills, hooks, subagents, MCP servers, rules, output styles — targeting NASA cFS flight software, Space ROS 2 nodes, Gazebo simulation, and Rust ground-support tools.
+In future Mars and Titan missions, how will spacecraft, ground systems, and the ground, air, and water vehicles sent to the planet communicate? How will data communication take place? Many large teams are currently working on this. And the protocol used is clear: CCSDS. NASA has begun using cFS, whose code is now open source, embedded in spacecraft. Meanwhile, ground, air, and water rovers use SPACE ROS, the spacecraft version of the robot operating system. Data communication is also provided via CCSDS. In our project, we are communicating with cFS applications written in Rust, and rovers whose cores we developed using SPACE ROS. We are running both systems integrated.
+
+<img width="1482" height="717" alt="Screenshot from 2026-04-27 11-17-04" src="https://github.com/user-attachments/assets/88fd6256-d763-4a2d-b4e5-4eb2292f28b0" />
+<img width="1482" height="717" alt="Screenshot from 2026-04-27 11-16-47" src="https://github.com/user-attachments/assets/a1b43481-d2d4-44a9-a6e0-989c0b755002" />
+<img width="1482" height="717" alt="Screenshot from 2026-04-27 11-16-10" src="https://github.com/user-attachments/assets/4da14e84-4683-4ca9-97a6-a7964ca98c6d" />
+
 
 ## What's Inside
 
